@@ -4,6 +4,20 @@
   "description": "A map of a codebase at the level of business behavior: domains, flows and pseudo-code, kept in step with the code.",
   "type": "module",
   "private": true,
-  "bin": { "capisce": "bin/capisce.mjs" },
-  "scripts": {}
+  "bin": {
+    "capisce": "bin/capisce.mjs"
+  },
+  "scripts": {
+    "dev": "vite --config viewer/vite.config.ts",
+    "build": "vite build --config viewer/vite.config.ts",
+    "check": "svelte-check --tsconfig viewer/tsconfig.json"
+  },
+  "devDependencies": {
+    "@sveltejs/vite-plugin-svelte": "^7.3.1",
+    "svelte": "^5.58.0",
+    "svelte-check": "^4.7.8",
+    "typescript": "^6.0.3",
+    "vite": "^8.3.8",
+    "vite-plugin-singlefile": "^2.3.4"
+  }
 }

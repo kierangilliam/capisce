@@ -1,0 +1,42 @@
+.annotation_layer { position: absolute; top: 0; left: 0; z-index: 2; pointer-events: auto; cursor: crosshair; touch-action: none; overflow: visible; }
+.stroke { fill: none; stroke: var(--cp_annotation); stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round; }
+.stroke.dimmed, .pin.dimmed { opacity: 0.18; }
+.pin {
+  position: absolute; z-index: 3; width: 22px; height: 22px; margin-top: -22px;
+  border-radius: 50% 50% 50% 0; background: var(--cp_annotation); color: #ffffff;
+  font: 600 11px/22px var(--cp_mono); text-align: center; pointer-events: none;
+}
+.draft_note {
+  position: absolute; z-index: 6; width: 264px; max-width: calc(100% - 16px);
+  background: var(--cp_background); border: 1px solid var(--cp_foreground); border-radius: var(--cp_radius);
+  box-shadow: 3px 3px 0 var(--cp_border); padding: 0 8px 8px; display: flex; flex-direction: column; gap: 6px;
+}
+.note_handle { height: 16px; margin: 0 -8px -4px; cursor: grab; touch-action: none; display: flex; align-items: center; justify-content: center; }
+.note_handle::before { content: ""; width: 28px; height: 3px; border-radius: 2px; background: var(--cp_border); }
+.note_handle:hover::before { background: var(--cp_muted); }
+.draft_note.moving .note_handle { cursor: grabbing; }
+.side_pane {
+  position: absolute; z-index: 5; top: 0; bottom: 0; right: 0; width: var(--cp_pane_width); max-width: 92%;
+  background: var(--cp_background); border-left: 1px solid var(--cp_border);
+  padding: 12px; overflow: auto; display: flex; flex-direction: column; gap: 8px;
+}
+.comment_input {
+  width: 100%; min-height: 64px; resize: vertical; padding: 6px 8px;
+  font: 13px/1.45 var(--cp_sans); color: var(--cp_foreground); background: var(--cp_background);
+  border: 1px solid var(--cp_border); border-radius: var(--cp_radius);
+}
+.comment_row { display: flex; gap: 6px 10px; align-items: center; flex-wrap: wrap; }
+.comment_row .bar_button { margin-left: auto; }
+.comment_note { font-size: 11.5px; color: var(--cp_muted); }
+.saved_comment { border-top: 1px solid var(--cp_border); padding-top: 8px; display: flex; flex-direction: column; gap: 4px; }
+.saved_comment.is_focused { border-top-color: var(--cp_annotation); }
+.saved_comment.done .comment_text { text-decoration: line-through; color: var(--cp_muted); }
+.capisce .comment_where { font: 11px/1.4 var(--cp_mono); overflow-wrap: anywhere; }
+.comment_where:hover { text-decoration: underline; text-underline-offset: 2px; }
+.comment_number { color: var(--cp_annotation); font-weight: 600; margin-right: 5px; }
+.comment_target { font: 11px/1.4 var(--cp_mono); color: var(--cp_muted); overflow-wrap: anywhere; }
+.comment_text { white-space: pre-wrap; overflow-wrap: anywhere; }
+.comment_reply { font-size: 12px; color: var(--cp_muted); white-space: pre-wrap; overflow-wrap: anywhere; }
+@media (max-width: 600px) {
+  .side_pane { position: static; width: auto; max-width: none; border-left: 0; border-top: 1px solid var(--cp_border); }
+}

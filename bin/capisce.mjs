@@ -47,7 +47,7 @@ async function map_at(ref, config) {
     });
     const archive = execFileSync("git", ["archive", ref, ...paths], { cwd: root, maxBuffer: 1 << 30 });
     execFileSync("tar", ["-x", "-C", folder], { input: archive });
-    return await build_map(folder, config, { config_root: root });
+    return await build_map(folder, config, { config_root: root, strict: false });
   } finally {
     rmSync(folder, { recursive: true, force: true });
   }

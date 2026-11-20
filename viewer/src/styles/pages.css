@@ -1,0 +1,57 @@
+.page { padding: 0 16px; display: flex; flex-direction: column; gap: 18px; }
+.page_name { font-size: 20px; font-weight: 600; line-height: 1.25; }
+.code_header .page_name { margin-bottom: 2px; }
+.page_doc { margin: 4px 0 0; max-width: 68ch; color: var(--cp_muted); }
+.page_doc code { font: 12px var(--cp_mono); }
+
+.canvas { position: relative; }
+.canvas svg { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+.edge_line { stroke: var(--cp_foreground); stroke-width: 1; fill: none; }
+.edge_head { fill: var(--cp_foreground); }
+.edge_label {
+  font: 10.5px var(--cp_sans); fill: var(--cp_muted); text-anchor: middle; dominant-baseline: middle;
+  paint-order: stroke; stroke: var(--cp_background); stroke-width: 6px; stroke-linejoin: round;
+}
+.canvas_frame { position: absolute; border: 1px solid var(--cp_foreground); border-radius: 10px; }
+.capisce .frame_label { position: absolute; display: flex; gap: 10px; align-items: baseline; padding: 0 6px; background: var(--cp_background); }
+.frame_label:hover .frame_name { text-decoration: underline; text-underline-offset: 2px; }
+.frame_name { font-weight: 600; }
+.frame_tag { font-size: 11.5px; color: var(--cp_muted); }
+.capisce .domain_box {
+  position: absolute; display: flex; flex-direction: column; justify-content: center; gap: 2px;
+  padding: 6px 10px; border: 1px solid var(--cp_foreground); border-radius: var(--cp_radius);
+  background: var(--cp_background); overflow: hidden;
+}
+.capisce .domain_box.with_count { overflow: visible; }
+.capisce .domain_box:hover, .capisce .model_box:hover, .capisce .flow_card:hover { background: var(--cp_foreground); color: var(--cp_background); }
+.domain_box:hover .domain_tag, .flow_card:hover .domain_tag { color: inherit; }
+.domain_name { font-weight: 600; line-height: 1.2; }
+.domain_tag { font-size: 11px; line-height: 1.25; color: var(--cp_muted); }
+.domain_count {
+  position: absolute; top: -9px; right: -9px; min-width: 20px; padding: 0 5px; border-radius: 10px;
+  background: var(--cp_foreground); color: var(--cp_background); font: 600 11px/20px var(--cp_mono); text-align: center;
+}
+
+.boxes { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+.flow_cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 8px; margin-top: 8px; max-width: 980px; }
+.capisce .flow_card { display: flex; flex-direction: column; gap: 3px; padding: 8px 10px; border: 1px solid var(--cp_foreground); border-radius: var(--cp_radius); }
+.capisce .model_box { border: 1px solid var(--cp_foreground); border-radius: var(--cp_radius); padding: 4px 10px; font: 600 12px var(--cp_mono); }
+.relation { display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; padding: 2px 0; }
+.relation_label { color: var(--cp_muted); }
+.capisce .relation_domain { font-weight: 600; text-decoration: underline; text-underline-offset: 2px; }
+.data_links { font: 11.5px/1.7 var(--cp_mono); color: var(--cp_muted); margin-top: 6px; }
+.data_links summary { cursor: pointer; font: 12px var(--cp_sans); }
+
+.change { display: flex; flex-direction: column; gap: 4px; padding: 8px 0; border-top: 1px solid var(--cp_border); max-width: 900px; }
+.change_head { display: flex; gap: 10px; align-items: baseline; flex-wrap: wrap; }
+.capisce .change_name { font: 600 12.5px var(--cp_mono); overflow-wrap: anywhere; }
+.change_name:hover { text-decoration: underline; text-underline-offset: 2px; }
+.change_status { font-size: 11px; color: var(--cp_muted); }
+.change_parts { display: flex; gap: 6px; flex-wrap: wrap; }
+.capisce .chip { border: 1px solid var(--cp_border); border-radius: 999px; padding: 1px 9px; font-size: 12px; background: none; }
+.capisce .chip:hover { border-color: var(--cp_foreground); background: var(--cp_foreground); color: var(--cp_background); }
+.capisce .chip.added { border-color: var(--cp_added); }
+.capisce .chip.removed { border-color: var(--cp_removed); text-decoration: none; color: inherit; }
+.capisce .chip.warning { border-style: dashed; border-color: var(--cp_foreground); }
+.change_group { font-weight: 600; font-size: 14px; margin-top: 10px; }
+.empty_page { margin: auto; padding: 24px; max-width: 46ch; text-align: center; color: var(--cp_muted); }

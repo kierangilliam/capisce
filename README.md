@@ -30,3 +30,13 @@ A project needs a `capisce.config.mjs` at its root. `check` and `stamp` need no 
 - `skills/maintain`: keep a map in step with the code.
 
 `node bin/capisce.mjs skill <name>` prints one.
+
+## Develop the page
+
+The page is a Svelte app in `viewer/`, built into one file at `dist/viewer.html`.
+
+```sh
+node bin/capisce.mjs build --json viewer/dev-data.json --root /path/to/project
+pnpm dev        # then open http://localhost:5173/viewer.html
+pnpm check
+```

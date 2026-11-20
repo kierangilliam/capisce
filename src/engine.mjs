@@ -250,9 +250,10 @@ const NO_SOURCE = { path: "", start: 0, end: 0, code: "" };
 
 /**
  * Reads the map of the checkout at `root`. `config_root` is where the config and its own extractors live: the same
- * place, unless `root` is an older commit unpacked elsewhere. `only` reads one map file with the shared one.
+ * place, unless `root` is an older commit unpacked elsewhere. `only` reads one map file with the shared one. An older
+ * commit is read with `strict` off, since its domains may not hold every file today's config reads.
  */
-export async function build_map(root, config, { config_root = root, only } = {}) {
+export async function build_map(root, config, { config_root = root, only, strict = true } = {}) {
   const source = source_reader(root);
   const maps_folder = join(root, config.maps);
   let map_names = [];
@@ -360,7 +361,7 @@ export async function build_map(root, config, { config_root = root, only } = {})
   for (const symbol of symbols.values()) {
     symbol.domain ??= listed.get(symbol.id) ?? file_domains.get(symbol.src.path) ?? "";
   }
-  if (domains.length > 0) {
+  if (domains.length > 0 && strict) {
     const homeless = found.filter(
       (symbol) => !listed.has(symbol.id) && !file_domains.has(symbol.src.path),
     );

@@ -1,0 +1,181 @@
+=== POST /v1/login
+kind: route
+group: Session
+src: api/src/external_api/session_endpoints.rs :: #[endpoint { method = POST, path = "/v1/login",
+doc: Signs a person in with a name and password. The answer holds the session token the console sends with every later request.
+---
+route POST /v1/login(user_name, password):
+    #> Check the name and password -> sessions.login | 401 InvalidCredentials | 403 AccountLocked
+    user, session = sessions.login(user_name, password)
+    return {token: session.token, user_name: user.name,
+            expires_at: session.expires_at}
+
+=== POST /v1/logout
+kind: route
+group: Session
+src: api/src/external_api/session_endpoints.rs :: #[endpoint { method = POST, path = "/v1/logout",
+doc: Signs out by ending the session whose token the request carries. It succeeds even when the token is missing or already ended.
+---
+route POST /v1/logout():
+    #> Read the token the request carries -> session_auth.bearer_token
+    token = session_auth.bearer_token(request)
+    #> End its session -> sessions.logout
+    if token is not None:
+        sessions.logout(token)
+    return 204
+
+=== sessions.login
+kind: def
+src: api/src/app/sessions.rs :: pub fn login(
+also: api/src/app/sessions.rs :: const SESSION_SECONDS ; api/src/app/sessions.rs :: const MAX_FAILED_LOGINS ; api/src/app/sessions.rs :: const LOCK_SECONDS
+doc: Checks a name and password and starts a session that lasts eight hours. Five wrong passwords in a row lock the account for 15 minutes. An unknown name and a wrong password get the same answer.
+---
+def login(user_name, password):
+    with store_lock:
+        #> Find the person by name -> user_store.user_by_name | InvalidCredentials
+        user = user_store.user_by_name(user_name)
+        if user is None:
+            raise ApiError.InvalidCredentials      # 401
+        #> Refuse a locked account | AccountLocked
+        # even the right password is refused while locked
+        if user.locked_until is in the future:
+            raise ApiError.AccountLocked           # 403
+        #> Count a wrong password -> user_store.user_record_failed_login | InvalidCredentials
+        if the password does not match:
+            failed = user_store.user_record_failed_login(user)
+            if failed >= 5:
+                user_store.user_lock_until(user, now + 15 min)
+            raise ApiError.InvalidCredentials      # 401
+        #> Start a session -> user_store.session_insert
+        user_store.user_clear_failed_logins(user)
+        session = user_store.session_insert(user, now + 8 h)
+        return user, session
+
+=== sessions.logout
+kind: def
+src: api/src/app/sessions.rs :: pub fn logout(
+doc: Ends one session. A token that is already gone is not an error.
+---
+def logout(token):
+    with store_lock:
+        user_store.session_delete(token)
+
+=== session_auth.bearer_token
+kind: def
+src: api/src/auth/session_auth.rs :: pub fn bearer_token(
+doc: Reads the session token from a request's Authorization header.
+---
+def bearer_token(request):
+    header = the request's Authorization header
+    if header is "Bearer " followed by a token:
+        return the token
+    return None
+
+=== session_auth.authenticate
+kind: def
+src: api/src/auth/session_auth.rs :: pub fn authenticate(
+doc: Says who is calling, from the session token the console sends. Almost every endpoint starts here. A session past its eight hours is deleted when it is next used.
+---
+def authenticate(request):
+    #> Read the token from the request -> bearer_token | Unauthenticated
+    token = bearer_token(request)
+    if token is None:
+        raise ApiError.Unauthenticated             # 401
+    with store_lock:
+        #> Find its session -> user_store.session_by_token | Unauthenticated
+        session = user_store.session_by_token(token)
+        if session is None:
+            raise ApiError.Unauthenticated
+        #> Delete an expired session -> user_store.session_delete | SessionExpired
+        if session.expires_at <= now:
+            user_store.session_delete(token)
+            raise ApiError.SessionExpired          # 401
+        #> Find the person -> user_store.user_by_id | Unauthenticated
+        user = user_store.user_by_id(session.user_id)
+        if user is None:
+            raise ApiError.Unauthenticated
+        return user
+
+=== project_roles.authorize_project
+kind: def
+src: api/src/auth/project_roles.rs :: pub fn authorize_project(
+doc: Finds a project by name and checks that the caller has at least the role the work needs.
+---
+def authorize_project(caller, project_name, needed):
+    #> Find the project by name -> project_store.project_by_name | ProjectNotFound
+    project = project_store.project_by_name(project_name)
+    if project is None:
+        raise ApiError.ProjectNotFound             # 404
+    #> Check the caller's role on it -> require_role | ProjectNotFound | Forbidden
+    role = require_role(caller, project.id, needed)
+    return project, role
+
+=== project_roles.require_role
+kind: def
+src: api/src/auth/project_roles.rs :: pub fn require_role(
+doc: Checks the caller's role on a project. Someone with no role is told the project does not exist, so they cannot learn which names are in use.
+---
+def require_role(caller, project_id, needed):
+    #> Find the caller's role -> user_store.role_of | ProjectNotFound
+    role = user_store.role_of(project_id, caller.id)
+    if role is None:
+        raise ApiError.ProjectNotFound             # 404
+    #> Compare it with the role needed | Forbidden
+    # viewer < collaborator < admin
+    if role < needed:
+        raise ApiError.Forbidden                   # 403
+    return role
+
+=== user_store.user_lock_until
+kind: def
+src: api/src/db/user_store.rs :: pub fn user_lock_until(
+doc: Locks an account until a time, and starts its count of wrong passwords again from zero.
+---
+def user_lock_until(user_id, until):
+    user.failed_logins = 0
+    user.locked_until = until
+
+=== user_store.user_clear_failed_logins
+kind: def
+src: api/src/db/user_store.rs :: pub fn user_clear_failed_logins(
+doc: Forgets an account's wrong passwords and any lock, after a good sign-in.
+---
+def user_clear_failed_logins(user_id):
+    user.failed_logins = 0
+    user.locked_until = None
+
+=== user_store.session_insert
+kind: def
+src: api/src/db/user_store.rs :: pub fn session_insert(
+doc: Starts a session for a person with a new random token.
+---
+def session_insert(user_id, expires_at):
+    session = Session(
+        token: a random token, user_id, expires_at)
+    save session
+    return session
+
+=== user_store.role_set
+kind: def
+src: api/src/db/user_store.rs :: pub fn role_set(
+doc: Gives a person a role on a project. A person has one role per project, so this replaces the role they had.
+---
+def role_set(project_id, user_id, role):
+    delete the person's RoleAssignment on the project, if any
+    save RoleAssignment(project_id, user_id, role)
+
+=== Signing in
+kind: flow
+domain: Access
+doc: What happens between a person typing their name and password and seeing their project.
+---
+#> The person submits the sign-in form -> session_actions.sign_in
+They type their name and password and press Sign in. If either is empty the console asks for it and sends nothing.
+#> The API checks the name and password -> POST /v1/login
+A wrong name and a wrong password get the same answer, so nobody can find out which names exist. Five wrong passwords in a row lock the account for 15 minutes, and while it is locked even the right password is refused.
+#> A session starts -> sessions.login
+The person gets a session that lasts eight hours. The console keeps its token in the browser and sends it with every request from then on.
+#> The console opens a project -> session_actions.open_first_project
+It lists the projects the person has a role on and opens the one they used last in this browser, or the first by name. Someone with no projects sees an empty page that offers to create one.
+#> Later, the session ends -> session_actions.handle_refusal
+When the eight hours are over, the next thing the person does is refused. The console returns them to the sign-in form and says their session ended.

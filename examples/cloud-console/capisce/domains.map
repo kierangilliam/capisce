@@ -1,0 +1,56 @@
+=== Rack
+frame: true
+tag: The hardware every project shares
+doc: One rack of machines. Running instances use its CPUs and memory, and every instance holds one address from its pool. A project's quota says what it may reserve; the rack decides whether there is room right now. An instance that finds no room fails, and can be started again later.
+models: Rack, Address
+files: api/src/app/placement.rs, api/src/db/rack_store.rs
+
+=== Console
+at: 0,0
+tag: What people see and do
+doc: The web console. Each thing a person does, such as submitting a form or pressing Stop, is one action. An action checks what it can in the browser, asks the API, then shows the outcome in plain words. Changes that take time are followed by asking the API again every second.
+files: console/*.ts
+relations:
+  Access: signs in via
+  Projects: shows
+more:
+  Instances: creates, starts and stops
+  Disks: creates and attaches
+
+=== Access
+at: 1,0
+tag: Who you are and what you may do
+doc: People sign in with a name and password and get a session that lasts eight hours. Five wrong passwords in a row lock the account for 15 minutes. On each project a person is a viewer, a collaborator or an admin, or has no role and cannot see the project at all.
+models: User, Session, RoleAssignment, ProjectRole
+files: api/src/external_api/session_endpoints.rs, api/src/app/sessions.rs, api/src/auth/*.rs, api/src/db/user_store.rs
+relations:
+  Projects: gives roles on
+
+=== Projects
+at: 0,1
+tag: Groups of resources with a quota
+doc: A project holds instances and disks, and sets a quota of CPUs, memory and storage they share. Whoever creates a project is its admin. A project can be deleted only once it is empty. Projects, instances and disks follow one rule for names.
+models: Project, ProjectUsage
+files: api/src/external_api/project_endpoints.rs, api/src/app/projects.rs, api/src/app/quotas.rs, api/src/app/names.rs, api/src/db/project_store.rs
+relations:
+  Instances: hold
+more:
+  Disks: hold
+
+=== Instances
+at: 1,1
+tag: Virtual machines and their states
+doc: An instance is a virtual machine with CPUs, memory, a boot disk and an address. It is created as "creating" and is running or failed a few seconds later. Starting and stopping also take a few seconds. Only a running instance can be stopped, and only a stopped or failed one can be started or deleted.
+models: Instance, InstanceState
+files: api/src/external_api/instance_endpoints.rs, api/src/app/instances.rs, api/src/db/instance_store.rs
+relations:
+  Disks: boot from
+more:
+  Rack: are placed on
+
+=== Disks
+at: 2,1
+tag: Storage that outlives an instance
+doc: A disk is storage in a project, attached to one instance or to none. Every instance has a boot disk that is created and deleted with it. Other disks are created on their own, attached while the instance is stopped, and kept when the instance is deleted.
+models: Disk
+files: api/src/external_api/disk_endpoints.rs, api/src/app/disks.rs, api/src/db/disk_store.rs

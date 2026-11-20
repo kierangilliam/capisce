@@ -1,0 +1,51 @@
+=== placement.place_instance
+kind: def
+src: api/src/app/placement.rs :: pub fn place_instance(
+doc: Gives an instance that is being created or started a place on the rack. It runs if the rack has enough CPUs and memory free, and fails if not. A project's quota does not promise room on the rack.
+---
+def place_instance(instance, now):
+    #> Count what is free on the rack -> rack_store.rack_free_capacity
+    free_cpus, free_memory_gib = (
+        rack_store.rack_free_capacity())
+    #> Fail the instance if it does not fit -> instance_store.instance_set_state
+    if (instance.ncpus > free_cpus
+            or instance.memory_gib > free_memory_gib):
+        return instance_store.instance_set_state(
+            instance, "failed",
+            "The rack has no room for this instance right…",
+            now)
+    #> Otherwise it is running -> instance_store.instance_set_state
+    return instance_store.instance_set_state(
+        instance, "running", now)
+
+=== rack_store.rack_free_capacity
+kind: def
+src: api/src/db/rack_store.rs :: pub fn rack_free_capacity(
+doc: The CPUs and memory on the rack that no instance is using. Only running and stopping instances hold a place, in any project.
+---
+def rack_free_capacity():
+    used = the ncpus and memory_gib of every Instance
+        whose state is "running" or "stopping"
+    return (Rack.total_cpus - used cpus,
+            Rack.total_memory_gib - used memory)
+
+=== rack_store.address_allocate
+kind: def
+src: api/src/db/rack_store.rs :: pub fn address_allocate(
+doc: Hands the first free address in the rack's pool to an instance. Every project draws from the same pool.
+---
+def address_allocate(instance_id):
+    address = the first Address that nobody holds
+    if address is None:
+        return None
+    address.instance_id = instance_id
+    return address.ip
+
+=== rack_store.address_release
+kind: def
+src: api/src/db/rack_store.rs :: pub fn address_release(
+doc: Returns an instance's address to the pool, for the next instance to take.
+---
+def address_release(instance_id):
+    for address held by the instance:
+        address.instance_id = None

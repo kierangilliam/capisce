@@ -38,7 +38,7 @@ export function review_needed(map, root, config) {
           ({ src }) => src.path === definition.path && src.start <= definition.end && src.end >= definition.start,
         ),
     )
-    .map((definition) => `  ${definition.path}:${definition.line}`);
+    .map((definition) => `  ${[definition.label, `${definition.path}:${definition.line}`].filter(Boolean).join("    ")}`);
 
   const lines = [];
   if (changed.length > 0) {

@@ -1,0 +1,29 @@
+=== ApiError
+kind: term
+src: api/src/errors.rs :: pub enum ApiError {
+doc: Every way the API refuses a request. Each refusal has a name, sent to the console as error_code, and a status: 400 for a bad request, 401 for not signed in, 403 for not allowed or over quota, 404 for not found, 409 for a conflict, and 503 when no address is free. The console chooses what to tell the person by the name.
+
+=== store_lock
+kind: term
+src: api/src/db/datastore.rs :: pub fn lock(
+doc: The API keeps everything in memory behind one lock. Each piece of work holds the lock from its first check to its last write, so two requests cannot both pass a check and then both write.
+
+=== console_state
+kind: term
+src: console/console_state.ts :: export const console_state
+doc: Everything the console is showing: who is signed in, their projects, the project on screen with its instances and disks, and the message at the top. Actions change it and the screen draws from it.
+
+=== show_message
+kind: term
+src: console/console_state.ts :: export function show_message(
+doc: Sets the message the console shows the person, or clears it.
+
+=== replace_instance
+kind: term
+src: console/console_state.ts :: export function replace_instance(
+doc: Puts a fresh copy of one instance into the list on screen, so its state updates without reloading the project.
+
+=== page
+kind: term
+src: console/console_state.ts :: export const page = {
+doc: What the console asks of the browser: put a yes-or-no question to the person, wait a moment, and remember a value for the next visit.

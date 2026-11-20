@@ -1,0 +1,662 @@
+=== session_actions.sign_in
+kind: def
+src: console/session_actions.ts :: export async function sign_in(
+doc: The person submits the sign-in form. On success the console keeps the session in the browser and opens a project.
+---
+def sign_in(user_name, password):
+    #> Ask for anything left empty | False
+    if user_name is blank or password is empty:
+        show_message("Enter your name and password.")
+        return False
+    #> Ask the API to sign in -> api_client.login | False, with why
+    try:
+        result = api_client.login(user_name, password)
+    except ApiError:
+        show_message(error_messages.message_for(error))
+        return False
+    #> Keep the session in the browser
+    console_state.session_token = result.token
+    console_state.user_name = result.user_name
+    page.remember("session token", result.token)
+    page.remember("user name", result.user_name)
+    #> Open a project -> open_first_project
+    show_message(None)
+    open_first_project()
+    return True
+
+=== session_actions.restore_session
+kind: def
+src: console/session_actions.ts :: export async function restore_session(
+doc: The console opens in a browser that signed in before. It tries the session it kept, and falls back to the sign-in form.
+---
+def restore_session():
+    #> Look for a session kept in the browser
+    token = page.recall("session token")
+    if token is None:
+        console_state.screen = "sign_in"
+        return
+    console_state.session_token = token
+    console_state.user_name = page.recall("user name")
+    #> Open a project -> open_first_project
+    # an ended session is refused here, and the
+    # person is returned to the sign-in form
+    open_first_project()
+
+=== session_actions.open_first_project
+kind: def
+src: console/session_actions.ts :: export async function open_first_project(
+doc: Loads the person's projects and opens the one they used last in this browser, or the first by name. Someone with no projects gets a page that offers to create one.
+---
+def open_first_project():
+    #> Load the person's projects -> api_client.project_list | stops, with why
+    try:
+        console_state.projects = api_client.project_list()
+    except ApiError:
+        handle_refusal(error)
+        return
+    #> Show the empty page when there are none
+    if console_state.projects is empty:
+        console_state.current_project = None
+        console_state.screen = "no_projects"
+        return
+    #> Open the last project used, or the first -> project_actions.switch_project
+    last_used = page.recall("last project")
+    project = the project named last_used, or the first
+    project_actions.switch_project(project.name)
+
+=== session_actions.sign_out
+kind: def
+src: console/session_actions.ts :: export async function sign_out(
+also: console/session_actions.ts :: function forget_session(
+doc: The person presses "Sign out". The console signs out even when the API cannot be told; the session then ends on its own after its eight hours.
+---
+def sign_out():
+    #> Tell the API, ignoring any failure -> api_client.logout
+    try:
+        api_client.logout()
+    except:
+        pass
+    #> Forget the session and show the sign-in form
+    forget the token and user name, here and in the browser
+    clear the projects, instances and disks on screen
+    console_state.screen = "sign_in"
+    show_message(None)
+
+=== session_actions.handle_refusal
+kind: def
+src: console/session_actions.ts :: export function handle_refusal(
+also: console/session_actions.ts :: function forget_session(
+doc: Shows why the API refused something. Every action sends its refusals here, so an ended session always returns the person to the sign-in form.
+---
+def handle_refusal(error):
+    #> Return to the sign-in form if the session ended
+    if error.status == 401:
+        forget the token and user name, here and in
+            the browser
+        clear the projects, instances and disks on screen
+        console_state.screen = "sign_in"
+        show_message("Your session ended. Sign in again.")
+        return
+    #> Otherwise say what went wrong -> error_messages.message_for
+    show_message(error_messages.message_for(error))
+
+=== error_messages.message_for
+kind: def
+src: console/error_messages.ts :: export function message_for(
+also: console/error_messages.ts :: const MESSAGES
+doc: Turns a refusal from the API into plain words with a next step. The console never shows the API's own message.
+---
+def message_for(error):
+    # one fixed sentence for each ApiError name, such as
+    # QuotaExceeded: "This is more than the project has
+    #   left. Choose a smaller size, or delete something
+    #   first."
+    if error has an error_code the console knows:
+        return its sentence
+    return "Something went wrong. Try again."
+
+=== project_actions.name_problem
+kind: def
+src: console/project_actions.ts :: export function name_problem(
+also: console/project_actions.ts :: const NAME_PATTERN ; console/project_actions.ts :: const MAX_NAME_LENGTH
+doc: Checks a name in the form with the same rule the API applies, so the person hears about a bad name before anything is sent.
+---
+def name_problem(name):
+    if name is empty:
+        return "Enter a name."
+    # the API's rule: see names.validate_name
+    if name breaks the rule for names:
+        return "Use lowercase letters, numbers and dashes…"
+    return None
+
+=== project_actions.switch_project
+kind: def
+src: console/project_actions.ts :: export async function switch_project(
+doc: The person picks a project in the project menu. Other actions also call this to reload the project after they change something in it.
+---
+def switch_project(project_name):
+    # the three requests go out together; if any one
+    # is refused nothing on screen changes
+    try:
+        #> Load the project, its usage and the role -> api_client.project_view
+        detail = api_client.project_view(project_name)
+        #> Load its instances -> api_client.instance_list
+        instances = api_client.instance_list(project_name)
+        #> Load its disks -> api_client.disk_list
+        disks = api_client.disk_list(project_name)
+    except ApiError:
+        handle_refusal(error)
+        return False
+    #> Show the project and remember it for next time
+    console_state.current_project = detail
+    console_state.instances = instances
+    console_state.disks = disks
+    console_state.screen = "project"
+    page.remember("last project", project_name)
+    return True
+
+=== project_actions.submit_create_project
+kind: def
+src: console/project_actions.ts :: export async function submit_create_project(
+doc: The person submits the new-project form. The new project opens straight away.
+---
+def submit_create_project(name, description):
+    #> Check the name -> name_problem | False, with what to fix
+    problem = name_problem(name)
+    if problem is not None:
+        show_message(problem)
+        return False
+    #> Ask the API to create it -> api_client.project_create | False, with why
+    try:
+        project = api_client.project_create(name, description)
+    except ApiError:
+        handle_refusal(error)
+        return False
+    add project to console_state.projects, by name
+    #> Open the new project -> switch_project
+    show_message(None)
+    return switch_project(name)
+
+=== project_actions.delete_project
+kind: def
+src: console/project_actions.ts :: export async function delete_project(
+doc: The person presses "Delete project" and confirms. The console stops early when it already knows the API would refuse.
+---
+def delete_project(project_name):
+    #> Stop early if the API would refuse | False, with why
+    # only when it is the project on screen, and from
+    # what was last loaded, which may be out of date
+    if project_name is console_state.current_project:
+        if its role != "admin":
+            show_message("Only a project admin can delete…")
+            return False
+        if its usage has any instances or disks:
+            show_message("This project still holds…")
+            return False
+    #> Ask the person to confirm | False when they decline
+    if not page.confirm("Delete the project…?"):
+        return False
+    #> Ask the API to delete it -> api_client.project_delete | False, with why
+    try:
+        api_client.project_delete(project_name)
+    except ApiError:
+        handle_refusal(error)
+        return False
+    #> Open another project -> session_actions.open_first_project
+    page.remember("last project", None)
+    show_message("The project … was deleted.")
+    session_actions.open_first_project()
+    return True
+
+=== project_actions.give_role
+kind: def
+src: console/project_actions.ts :: export async function give_role(
+doc: A project admin gives someone a role on the project on screen, from its access page.
+---
+def give_role(user_name, role):
+    if no project is on screen:
+        return False
+    #> Ask for a name if it is blank | False
+    if user_name is blank:
+        show_message("Enter the person's name.")
+        return False
+    #> Ask the API to save the role -> api_client.project_member_set | False, with why
+    try:
+        api_client.project_member_set(
+            project, user_name, role)
+    except ApiError:
+        handle_refusal(error)
+        return False
+    show_message("<name> is now <role> on <project>.")
+    return True
+
+=== instance_actions.instance_form_problem
+kind: def
+src: console/instance_actions.ts :: export function instance_form_problem(
+doc: Says what is wrong with the create-instance form, or nothing. It repeats the API's limits and checks the project's remaining quota as last loaded, so most refusals are caught before sending.
+---
+def instance_form_problem(form):
+    if no project is on screen:
+        return "Choose a project first."
+    #> Check the name -> project_actions.name_problem
+    problem = project_actions.name_problem(form.name)
+    if problem is not None:
+        return problem
+    #> Check the sizes are whole numbers in range
+    if form.ncpus is not 1 to 8:
+        return "Choose 1 to 8 CPUs."
+    if form.memory_gib is not 1 to 32:
+        return "Choose 1 to 32 GiB of memory."
+    if form.boot_disk_size_gib is not 10 to 200:
+        return "Choose a boot disk of 10 to 200 GiB."
+    #> Check what the project has left of its quota
+    # quota minus usage, for CPUs, memory, then disk
+    if form asks for more than is left of one:
+        return "This project has <n> … left. Choose less."
+    return None
+
+=== instance_actions.submit_create_instance
+kind: def
+src: console/instance_actions.ts :: export async function submit_create_instance(
+also: console/instance_actions.ts :: function report_outcome(
+doc: The person submits the create-instance form. The console checks the form, asks the API, then follows the instance until it is running or failed.
+---
+def submit_create_instance(form):
+    #> Check the form and the quota left -> instance_form_problem | None, with what to fix
+    problem = instance_form_problem(form)
+    if problem is not None:
+        show_message(problem)
+        return None
+    #> Ask the API to create it -> api_client.instance_create | None, with why
+    try:
+        instance = api_client.instance_create(project, form)
+    except ApiError:
+        session_actions.handle_refusal(error)
+        return None
+    replace_instance(instance)
+    show_message("Creating <name>…")
+    #> Wait until it is running or failed -> wait_for_instance
+    settled = wait_for_instance(
+        instance.id, ["running", "failed"])
+    #> Reload the project, for its new usage -> project_actions.switch_project
+    project_actions.switch_project(project)
+    #> Tell the person how it ended
+    if settled is None:    # still unknown after 30 seconds
+        return None
+    if settled.state == "running":
+        show_message("<name> is running at <address>.")
+    else:
+        show_message("<name> failed. <reason> Try again"
+                     " later, or choose a smaller size.")
+    return settled
+
+=== instance_actions.wait_for_instance
+kind: def
+src: console/instance_actions.ts :: export async function wait_for_instance(
+also: console/instance_actions.ts :: const POLL_MILLISECONDS ; console/instance_actions.ts :: const MAX_POLLS
+doc: Follows an instance that is changing state: asks the API for it once a second until it reaches one of the states wanted, and gives up after 30 tries.
+---
+def wait_for_instance(instance_id, states):
+    for 30 tries:
+        #> Wait a second
+        page.sleep(1 second)
+        #> Ask the API for the instance -> api_client.instance_view | None, with why
+        try:
+            instance = api_client.instance_view(instance_id)
+        except ApiError:
+            session_actions.handle_refusal(error)
+            return None
+        #> Show its state, and stop once it has settled
+        replace_instance(instance)
+        if instance.state in states:
+            return instance
+    #> Give up after 30 tries | None
+    show_message("This is taking longer than usual. Reload…")
+    return None
+
+=== instance_actions.stop_instance
+kind: def
+src: console/instance_actions.ts :: export async function stop_instance(
+also: console/instance_actions.ts :: function report_outcome(
+doc: The person presses "Stop" on an instance. The console asks them to confirm, because whatever is running on the instance is interrupted.
+---
+def stop_instance(instance):
+    #> Only a running instance can be stopped | None
+    if instance.state != "running":
+        show_message("Only a running instance can be…")
+        return None
+    #> Ask the person to confirm | None when they decline
+    if not page.confirm("Stop <name>? Anything running…"):
+        return None
+    #> Ask the API to stop it -> api_client.instance_stop | None, with why
+    try:
+        stopping = api_client.instance_stop(instance.id)
+        replace_instance(stopping)
+    except ApiError:
+        session_actions.handle_refusal(error)
+        return None
+    show_message("Stopping <name>…")
+    #> Wait until it is stopped -> wait_for_instance
+    settled = wait_for_instance(instance.id, ["stopped"])
+    #> Tell the person it stopped
+    if settled is not None:
+        show_message("<name> is stopped.")
+    return settled
+
+=== instance_actions.start_instance
+kind: def
+src: console/instance_actions.ts :: export async function start_instance(
+also: console/instance_actions.ts :: function report_outcome(
+doc: The person presses "Start" on a stopped or failed instance. The console follows it until it is running or has failed again.
+---
+def start_instance(instance):
+    #> Only a stopped or failed instance can start | None
+    if instance.state not in ["stopped", "failed"]:
+        show_message("Only a stopped instance can be…")
+        return None
+    #> Ask the API to start it -> api_client.instance_start | None, with why
+    try:
+        starting = api_client.instance_start(instance.id)
+        replace_instance(starting)
+    except ApiError:
+        session_actions.handle_refusal(error)
+        return None
+    show_message("Starting <name>…")
+    #> Wait until it is running or failed -> wait_for_instance
+    settled = wait_for_instance(
+        instance.id, ["running", "failed"])
+    #> Tell the person how it ended
+    if settled is None:
+        return None
+    if settled.state == "running":
+        show_message("<name> is running.")
+    else:
+        show_message("<name> failed. <reason> Try again"
+                     " later, or choose a smaller size.")
+    return settled
+
+=== instance_actions.delete_instance
+kind: def
+src: console/instance_actions.ts :: export async function delete_instance(
+doc: The person presses "Delete" on an instance and confirms. The console warns that the boot disk goes too.
+---
+def delete_instance(instance):
+    #> Only a stopped or failed instance can go | False
+    if instance.state not in ["stopped", "failed"]:
+        show_message("Stop the instance first, then…")
+        return False
+    #> Ask the person to confirm | False when they decline
+    if not page.confirm("Delete <name>? Its boot disk is"
+            " deleted with it. Other disks are kept."):
+        return False
+    #> Ask the API to delete it -> api_client.instance_delete | False, with why
+    try:
+        api_client.instance_delete(instance.id)
+    except ApiError:
+        session_actions.handle_refusal(error)
+        return False
+    show_message("<name> was deleted.")
+    #> Reload the project -> project_actions.switch_project
+    project_actions.switch_project(the project on screen)
+    return True
+
+=== disk_actions.submit_create_disk
+kind: def
+src: console/disk_actions.ts :: export async function submit_create_disk(
+doc: The person submits the new-disk form.
+---
+def submit_create_disk(name, size_gib):
+    if no project is on screen:
+        return False
+    #> Check the name and the size -> project_actions.name_problem | False, with what to fix
+    problem = project_actions.name_problem(name)
+    if problem is not None:
+        show_message(problem)
+        return False
+    if size_gib is not a whole number from 1 to 1000:
+        show_message("Choose a size of 1 to 1000 GiB.")
+        return False
+    #> Ask the API to create it -> api_client.disk_create | False, with why
+    try:
+        api_client.disk_create(project, name, size_gib)
+    except ApiError:
+        session_actions.handle_refusal(error)
+        return False
+    show_message("The disk <name> was created.")
+    #> Reload the project -> project_actions.switch_project
+    return project_actions.switch_project(project)
+
+=== disk_actions.attach_disk
+kind: def
+src: console/disk_actions.ts :: export async function attach_disk(
+doc: The person picks a disk to attach to an instance.
+---
+def attach_disk(instance, disk):
+    #> The instance must be stopped | False
+    if instance.state != "stopped":
+        show_message("Stop the instance first, then attach…")
+        return False
+    #> Ask the API to attach it -> api_client.instance_disk_attach | False, with why
+    try:
+        attached = api_client.instance_disk_attach(
+            instance.id, disk.id)
+    except ApiError:
+        session_actions.handle_refusal(error)
+        return False
+    #> Show the disk as attached
+    replace the disk in console_state.disks with attached
+    show_message("<disk> is attached to <instance>.")
+    return True
+
+=== disk_actions.delete_disk
+kind: def
+src: console/disk_actions.ts :: export async function delete_disk(
+doc: The person presses "Delete" on a disk. There is no confirm step, and an attached disk is refused in the console.
+---
+def delete_disk(disk):
+    if no project is on screen:
+        return False
+    #> An attached disk cannot be deleted | False
+    if disk.attached_instance_id is not None:
+        show_message("This disk is attached to an instance…")
+        return False
+    #> Ask the API to delete it -> api_client.disk_delete | False, with why
+    try:
+        api_client.disk_delete(disk.id)
+    except ApiError:
+        session_actions.handle_refusal(error)
+        return False
+    show_message("The disk <name> was deleted.")
+    #> Reload the project -> project_actions.switch_project
+    return project_actions.switch_project(project)
+
+=== api_client.api_request
+kind: def
+src: console/api_client.ts :: export async function api_request<
+doc: Sends one request to the API with the session token, and turns any refusal into an error that carries the API's name for it. Every other function of the API client goes through here.
+---
+def api_request(method, path, body=None):
+    #> Add the session token, when signed in
+    if console_state.session_token is not None:
+        headers.Authorization = "Bearer <token>"
+    #> Send the request | ApiError Unreachable
+    try:
+        response = fetch(API_ORIGIN + path, body as JSON)
+    except:
+        raise ApiError(0, "Unreachable")
+    #> Read the answer | ApiError with the API's error_code
+    if response.status == 204:
+        return None
+    if response is not ok:
+        # the name is "Unknown" when the API sent none
+        raise ApiError(response.status, answer.error_code)
+    return the answer
+
+=== api_client.login
+kind: def
+src: console/api_client.ts :: export function login(
+doc: Asks the API to sign a person in.
+---
+def login(user_name, password):
+    #> Send the request -> POST /v1/login
+    return api_request(
+        "POST", "/v1/login", {user_name, password})
+
+=== api_client.logout
+kind: def
+src: console/api_client.ts :: export function logout(
+doc: Asks the API to end the session.
+---
+def logout():
+    #> Send the request -> POST /v1/logout
+    return api_request("POST", "/v1/logout")
+
+=== api_client.project_list
+kind: def
+src: console/api_client.ts :: export function project_list(
+doc: Asks the API for the projects the person has a role on.
+---
+def project_list():
+    #> Send the request -> GET /v1/projects
+    return api_request("GET", "/v1/projects")
+
+=== api_client.project_create
+kind: def
+src: console/api_client.ts :: export function project_create(
+doc: Asks the API to create a project.
+---
+def project_create(name, description):
+    #> Send the request -> POST /v1/projects
+    return api_request(
+        "POST", "/v1/projects", {name, description})
+
+=== api_client.project_view
+kind: def
+src: console/api_client.ts :: export function project_view(
+doc: Asks the API for one project, its usage and the person's role on it.
+---
+def project_view(project_name):
+    #> Send the request -> GET /v1/projects/{project}
+    return api_request("GET", "/v1/projects/<project_name>")
+
+=== api_client.project_delete
+kind: def
+src: console/api_client.ts :: export function project_delete(
+doc: Asks the API to delete a project.
+---
+def project_delete(project_name):
+    #> Send the request -> DELETE /v1/projects/{project}
+    return api_request(
+        "DELETE", "/v1/projects/<project_name>")
+
+=== api_client.project_member_set
+kind: def
+src: console/api_client.ts :: export function project_member_set(
+doc: Asks the API to give a person a role on a project.
+---
+def project_member_set(project_name, user_name, role):
+    #> Send the request -> PUT /v1/projects/{project}/members
+    return api_request(
+        "PUT", "/v1/projects/<project_name>/members",
+        {user_name, role})
+
+=== api_client.instance_list
+kind: def
+src: console/api_client.ts :: export function instance_list(
+doc: Asks the API for the instances of a project.
+---
+def instance_list(project_name):
+    #> Send the request -> GET /v1/instances
+    return api_request(
+        "GET", "/v1/instances?project=<project_name>")
+
+=== api_client.instance_create
+kind: def
+src: console/api_client.ts :: export function instance_create(
+doc: Asks the API to create an instance in a project.
+---
+def instance_create(project_name, params):
+    #> Send the request -> POST /v1/instances
+    return api_request(
+        "POST", "/v1/instances?project=<project_name>",
+        params)
+
+=== api_client.instance_view
+kind: def
+src: console/api_client.ts :: export function instance_view(
+doc: Asks the API for one instance as it is now.
+---
+def instance_view(instance_id):
+    #> Send the request -> GET /v1/instances/{instance}
+    return api_request("GET", "/v1/instances/<instance_id>")
+
+=== api_client.instance_start
+kind: def
+src: console/api_client.ts :: export function instance_start(
+doc: Asks the API to start an instance.
+---
+def instance_start(instance_id):
+    #> Send the request -> POST /v1/instances/{instance}/start
+    return api_request(
+        "POST", "/v1/instances/<instance_id>/start")
+
+=== api_client.instance_stop
+kind: def
+src: console/api_client.ts :: export function instance_stop(
+doc: Asks the API to stop an instance.
+---
+def instance_stop(instance_id):
+    #> Send the request -> POST /v1/instances/{instance}/stop
+    return api_request(
+        "POST", "/v1/instances/<instance_id>/stop")
+
+=== api_client.instance_delete
+kind: def
+src: console/api_client.ts :: export function instance_delete(
+doc: Asks the API to delete an instance.
+---
+def instance_delete(instance_id):
+    #> Send the request -> DELETE /v1/instances/{instance}
+    return api_request(
+        "DELETE", "/v1/instances/<instance_id>")
+
+=== api_client.instance_disk_attach
+kind: def
+src: console/api_client.ts :: export function instance_disk_attach(
+doc: Asks the API to attach a disk to an instance.
+---
+def instance_disk_attach(instance_id, disk_id):
+    #> Send the request -> POST /v1/instances/{instance}/disks/attach
+    return api_request(
+        "POST", "/v1/instances/<instance_id>/disks/attach",
+        {disk: disk_id})
+
+=== api_client.disk_list
+kind: def
+src: console/api_client.ts :: export function disk_list(
+doc: Asks the API for the disks of a project.
+---
+def disk_list(project_name):
+    #> Send the request -> GET /v1/disks
+    return api_request(
+        "GET", "/v1/disks?project=<project_name>")
+
+=== api_client.disk_create
+kind: def
+src: console/api_client.ts :: export function disk_create(
+doc: Asks the API to create a disk in a project.
+---
+def disk_create(project_name, name, size_gib):
+    #> Send the request -> POST /v1/disks
+    return api_request(
+        "POST", "/v1/disks?project=<project_name>",
+        {name, size_gib})
+
+=== api_client.disk_delete
+kind: def
+src: console/api_client.ts :: export function disk_delete(
+doc: Asks the API to delete a disk.
+---
+def disk_delete(disk_id):
+    #> Send the request -> DELETE /v1/disks/{disk}
+    return api_request("DELETE", "/v1/disks/<disk_id>")

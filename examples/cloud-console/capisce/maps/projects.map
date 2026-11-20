@@ -1,0 +1,247 @@
+=== GET /v1/projects
+kind: route
+group: Projects
+src: api/src/external_api/project_endpoints.rs :: #[endpoint { method = GET, path = "/v1/projects",
+doc: Lists the projects the signed-in person has a role on.
+---
+route GET /v1/projects():
+    #> Find who is calling -> session_auth.authenticate | 401
+    caller = session_auth.authenticate(request)
+    #> List their projects -> projects.list_projects
+    return projects.list_projects(caller)
+
+=== POST /v1/projects
+kind: route
+group: Projects
+src: api/src/external_api/project_endpoints.rs :: #[endpoint { method = POST, path = "/v1/projects",
+doc: Creates a project. Anyone signed in may, and whoever creates it becomes its admin.
+---
+route POST /v1/projects(name, description=""):
+    #> Find who is calling -> session_auth.authenticate | 401
+    caller = session_auth.authenticate(request)
+    #> Create the project -> projects.create_project | 400 InvalidRequest | 409 ProjectNameTaken
+    project = projects.create_project(
+        caller, name, description)
+    return 201, project
+
+=== GET /v1/projects/{project}
+kind: route
+group: Projects
+src: api/src/external_api/project_endpoints.rs :: #[endpoint { method = GET, path = "/v1/projects/{project}",
+doc: Shows one project with how much of its quota is used and the caller's own role, so the console can show what is left and hide what the person may not do.
+---
+route GET /v1/projects/{project}(project):
+    #> Find who is calling -> session_auth.authenticate | 401
+    caller = session_auth.authenticate(request)
+    #> Load the project, its usage and the caller's role -> projects.view_project | 404 ProjectNotFound
+    detail = projects.view_project(caller, project)
+    return {detail.project, detail.usage, detail.role}
+
+=== DELETE /v1/projects/{project}
+kind: route
+group: Projects
+src: api/src/external_api/project_endpoints.rs :: #[endpoint { method = DELETE, path = "/v1/projects/{project}",
+doc: Deletes a project that holds no instances and no disks. Only an admin of the project may.
+---
+route DELETE /v1/projects/{project}(project):
+    #> Find who is calling -> session_auth.authenticate | 401
+    caller = session_auth.authenticate(request)
+    #> Delete the project if it is empty -> projects.delete_project | 404 ProjectNotFound | 403 Forbidden | 409 ProjectNotEmpty
+    projects.delete_project(caller, project)
+    return 204
+
+=== PUT /v1/projects/{project}/members
+kind: route
+group: Members
+src: api/src/external_api/project_endpoints.rs :: #[endpoint { method = PUT, path = "/v1/projects/{project}/members",
+doc: Gives a person a role on a project, replacing any role they had. Only an admin of the project may.
+---
+route PUT /v1/projects/{project}/members(
+        project, user_name, role):
+    #> Find who is calling -> session_auth.authenticate | 401
+    caller = session_auth.authenticate(request)
+    #> Save the role -> projects.set_member_role | 403 | 404 | 409
+    # 404 ProjectNotFound or UserNotFound,
+    # 403 Forbidden, 409 LastAdmin
+    projects.set_member_role(caller, project, user_name, role)
+    return 204
+
+=== projects.list_projects
+kind: def
+src: api/src/app/projects.rs :: pub fn list_projects(
+doc: The projects a person has any role on, sorted by name.
+---
+def list_projects(caller):
+    with store_lock:
+        return project_store.projects_for_user(caller.id)
+
+=== projects.create_project
+kind: def
+src: api/src/app/projects.rs :: pub fn create_project(
+doc: Creates a project with the default quota and makes its creator the admin.
+---
+def create_project(caller, name, description):
+    #> Check the name is well formed -> names.validate_name | InvalidRequest
+    names.validate_name(name)
+    with store_lock:
+        #> Refuse a name another project has -> project_store.project_by_name | ProjectNameTaken
+        # across the whole rack, including projects
+        # the caller cannot see
+        if project_store.project_by_name(name) is not None:
+            raise ApiError.ProjectNameTaken        # 409
+        #> Save it with the default quota -> project_store.project_insert
+        project = project_store.project_insert(
+            name, description)
+        #> Make the creator its admin -> user_store.role_set
+        user_store.role_set(project.id, caller.id, "admin")
+        return project
+
+=== projects.view_project
+kind: def
+src: api/src/app/projects.rs :: pub fn view_project(
+doc: One project, how much of its quota is used, and the caller's role on it. Any role is enough.
+---
+def view_project(caller, project_name):
+    with store_lock:
+        #> Find the project; any role may look -> project_roles.authorize_project | ProjectNotFound
+        project, role = project_roles.authorize_project(
+            caller, project_name, "viewer")
+        #> Add up what it holds -> project_store.project_usage
+        usage = project_store.project_usage(project.id)
+        return project, usage, role
+
+=== projects.delete_project
+kind: def
+src: api/src/app/projects.rs :: pub fn delete_project(
+doc: Deletes a project and every role on it. It is refused while the project holds any instance or disk, so nothing is deleted by surprise.
+---
+def delete_project(caller, project_name):
+    with store_lock:
+        #> Find the project; admins only -> project_roles.authorize_project | ProjectNotFound | Forbidden
+        project, _ = project_roles.authorize_project(
+            caller, project_name, "admin")
+        #> Refuse while it holds anything -> project_store.project_usage | ProjectNotEmpty
+        usage = project_store.project_usage(project.id)
+        if usage.instances > 0 or usage.disks > 0:
+            raise ApiError.ProjectNotEmpty         # 409
+        #> Delete it and its roles -> project_store.project_delete
+        project_store.project_delete(project.id)
+
+=== projects.set_member_role
+kind: def
+src: api/src/app/projects.rs :: pub fn set_member_role(
+doc: Gives a person a role on a project. The project must always keep at least one admin.
+---
+def set_member_role(caller, project_name, user_name, role):
+    with store_lock:
+        #> Find the project; admins only -> project_roles.authorize_project | ProjectNotFound | Forbidden
+        project, _ = project_roles.authorize_project(
+            caller, project_name, "admin")
+        #> Find the person by name -> user_store.user_by_name | UserNotFound
+        member = user_store.user_by_name(user_name)
+        if member is None:
+            raise ApiError.UserNotFound            # 404
+        #> Keep at least one admin -> user_store.admin_count | LastAdmin
+        if (member is an admin now and role != "admin"
+                and user_store.admin_count(project.id) == 1):
+            raise ApiError.LastAdmin               # 409
+        #> Save the role -> user_store.role_set
+        user_store.role_set(project.id, member.id, role)
+
+=== quotas.check_quota
+kind: def
+src: api/src/app/quotas.rs :: pub fn check_quota(
+doc: Refuses a request that would take a project past its quota of CPUs, memory or storage. The error names the first one that would be exceeded and how much is left.
+---
+def check_quota(project, cpus, memory_gib, disk_gib):
+    #> Add up what the project holds -> project_store.project_usage
+    usage = project_store.project_usage(project.id)
+    #> Compare what is asked with what is left | QuotaExceeded
+    # checked in this order; the first that fails is named
+    for asked, left in [
+            (cpus, project.quota_cpus - usage.cpus),
+            (memory_gib, quota_memory_gib - usage.memory_gib),
+            (disk_gib, quota_disk_gib - usage.disk_gib)]:
+        if asked > left:
+            raise ApiError.QuotaExceeded           # 403
+
+=== names.validate_name
+kind: def
+src: api/src/app/names.rs :: pub fn validate_name(
+also: api/src/app/names.rs :: const MAX_NAME_LENGTH
+doc: The one rule for the names of projects, instances and disks.
+---
+def validate_name(name):
+    # lowercase letters, digits and dashes
+    # starts with a letter, does not end with a dash
+    # at most 40 characters
+    if name breaks any of these:
+        raise ApiError.InvalidRequest              # 400
+
+=== project_store.project_insert
+kind: def
+src: api/src/db/project_store.rs :: pub fn project_insert(
+also: api/src/db/project_store.rs :: const DEFAULT_QUOTA_CPUS ; api/src/db/project_store.rs :: const DEFAULT_QUOTA_MEMORY_GIB ; api/src/db/project_store.rs :: const DEFAULT_QUOTA_DISK_GIB
+doc: Saves a new project. Every project starts with the same quota.
+---
+def project_insert(name, description):
+    project = Project(name, description,
+        quota_cpus: 16, quota_memory_gib: 64,
+        quota_disk_gib: 500)
+    save project
+    return project
+
+=== project_store.project_usage
+kind: def
+src: api/src/db/project_store.rs :: pub fn project_usage(
+doc: What a project holds against its quota. An instance counts in every state, even stopped or failed, and a disk counts whether it is attached or not.
+---
+def project_usage(project_id):
+    usage = ProjectUsage(all zero)
+    for instance in the project's instances:
+        usage.instances += 1
+        usage.cpus += instance.ncpus
+        usage.memory_gib += instance.memory_gib
+    for disk in the project's disks:    # boot disks too
+        usage.disks += 1
+        usage.disk_gib += disk.size_gib
+    return usage
+
+=== project_store.project_delete
+kind: def
+src: api/src/db/project_store.rs :: pub fn project_delete(
+doc: Removes a project and every role people had on it.
+---
+def project_delete(project_id):
+    delete every RoleAssignment on the project
+    delete the Project
+
+=== Switching project
+kind: flow
+domain: Projects
+doc: What the console loads when a person picks another project.
+---
+#> The person picks a project in the menu -> project_actions.switch_project
+The menu lists the projects they have a role on.
+#> The console loads the project -> GET /v1/projects/{project}
+It asks for the project with its usage and the person's role, and at the same time for its instances and its disks. Any role is enough to look.
+#> The API checks the person's role -> project_roles.authorize_project
+Someone with no role on the project is told it does not exist.
+#> The project is shown and remembered
+The console shows the project, how much of its quota is left, and only the buttons the person's role allows. It remembers the project in the browser and opens it first next time.
+
+=== Deleting a project
+kind: flow
+domain: Projects
+doc: What stands between pressing "Delete project" and the project being gone.
+---
+#> The person presses Delete project -> project_actions.delete_project
+If the console already knows they are not an admin, or that the project still holds instances or disks, it says so and stops. Otherwise it asks them to confirm, and warns that it cannot be undone.
+#> The API checks again -> DELETE /v1/projects/{project}
+The console's picture may be out of date, so the API makes its own checks. Only an admin of the project may delete it.
+#> A project that holds anything is refused -> projects.delete_project
+The project must hold no instances and no disks. Boot disks count, so every instance has to be deleted first. The console tells the person to delete them and try again.
+#> The project and its roles are removed -> project_store.project_delete
+Everyone who had a role on it loses it.
+#> The console opens another project -> session_actions.open_first_project
+It reloads the person's projects and opens the first one, or the empty page if none are left.

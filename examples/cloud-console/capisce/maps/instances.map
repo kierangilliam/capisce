@@ -1,0 +1,313 @@
+=== GET /v1/instances
+kind: route
+group: Instances
+src: api/src/external_api/instance_endpoints.rs :: #[endpoint { method = GET, path = "/v1/instances",
+doc: Lists the instances of a project, sorted by name.
+---
+route GET /v1/instances(project):
+    #> Find who is calling -> session_auth.authenticate | 401
+    caller = session_auth.authenticate(request)
+    #> List the project's instances -> instances.list_instances | 404 ProjectNotFound
+    return instances.list_instances(caller, project)
+
+=== POST /v1/instances
+kind: route
+group: Instances
+src: api/src/external_api/instance_endpoints.rs :: #[endpoint { method = POST, path = "/v1/instances",
+doc: Creates an instance in a project, with a boot disk and an address. It answers at once with the instance as "creating". The console then asks for the instance again until it is running or failed.
+---
+route POST /v1/instances(
+        project, name, ncpus, memory_gib, boot_disk_size_gib):
+    #> Find who is calling -> session_auth.authenticate | 401
+    caller = session_auth.authenticate(request)
+    #> Create the instance -> instances.create_instance | 400 | 403 | 404 | 409 | 503
+    # 404 ProjectNotFound, 400 InvalidRequest,
+    # 403 Forbidden or QuotaExceeded,
+    # 409 InstanceNameTaken or DiskNameTaken,
+    # 503 AddressPoolExhausted
+    instance = instances.create_instance(caller, project,
+        {name, ncpus, memory_gib, boot_disk_size_gib})
+    return 201, instance
+
+=== GET /v1/instances/{instance}
+kind: route
+group: Instances
+src: api/src/external_api/instance_endpoints.rs :: #[endpoint { method = GET, path = "/v1/instances/{instance}",
+doc: Shows one instance as it is now. The console calls this every second while an instance is changing state.
+---
+route GET /v1/instances/{instance}(instance):
+    #> Find who is calling -> session_auth.authenticate | 401
+    caller = session_auth.authenticate(request)
+    #> Load the instance -> instances.view_instance | 404 InstanceNotFound
+    return instances.view_instance(caller, instance)
+
+=== POST /v1/instances/{instance}/start
+kind: route
+group: Starting and stopping
+src: api/src/external_api/instance_endpoints.rs :: #[endpoint { method = POST, path = "/v1/instances/{instance}/start",
+doc: Starts a stopped or failed instance. It answers with the instance as "starting".
+---
+route POST /v1/instances/{instance}/start(instance):
+    #> Find who is calling -> session_auth.authenticate | 401
+    caller = session_auth.authenticate(request)
+    #> Start the instance -> instances.start_instance | 404 InstanceNotFound | 403 Forbidden | 409 InstanceBusy
+    return 202, instances.start_instance(caller, instance)
+
+=== POST /v1/instances/{instance}/stop
+kind: route
+group: Starting and stopping
+src: api/src/external_api/instance_endpoints.rs :: #[endpoint { method = POST, path = "/v1/instances/{instance}/stop",
+doc: Stops a running instance. It answers with the instance as "stopping".
+---
+route POST /v1/instances/{instance}/stop(instance):
+    #> Find who is calling -> session_auth.authenticate | 401
+    caller = session_auth.authenticate(request)
+    #> Stop the instance -> instances.stop_instance | 404 InstanceNotFound | 403 Forbidden | 409 InstanceNotRunning
+    return 202, instances.stop_instance(caller, instance)
+
+=== DELETE /v1/instances/{instance}
+kind: route
+group: Instances
+src: api/src/external_api/instance_endpoints.rs :: #[endpoint { method = DELETE, path = "/v1/instances/{instance}",
+doc: Deletes a stopped or failed instance. Its boot disk is deleted with it.
+---
+route DELETE /v1/instances/{instance}(instance):
+    #> Find who is calling -> session_auth.authenticate | 401
+    caller = session_auth.authenticate(request)
+    #> Delete the instance -> instances.delete_instance | 404 InstanceNotFound | 403 Forbidden | 409 InstanceNotStopped
+    instances.delete_instance(caller, instance)
+    return 204
+
+=== POST /v1/instances/{instance}/disks/attach
+kind: route
+group: Disks of an instance
+src: api/src/external_api/instance_endpoints.rs :: #[endpoint { method = POST, path = "/v1/instances/{instance}/disks/attach",
+doc: Attaches a disk of the same project to a stopped instance.
+---
+route POST /v1/instances/{instance}/disks/attach(
+        instance, disk):
+    #> Find who is calling -> session_auth.authenticate | 401
+    caller = session_auth.authenticate(request)
+    #> Attach the disk -> disks.attach_disk | 403 | 404 | 409
+    # 404 InstanceNotFound or DiskNotFound, 403 Forbidden,
+    # 409 DiskAttached, InstanceNotStopped or TooManyDisks
+    return 202, disks.attach_disk(caller, instance, disk)
+
+=== instances.create_instance
+kind: def
+src: api/src/app/instances.rs :: pub fn create_instance(
+also: api/src/app/instances.rs :: const MAX_CPUS ; api/src/app/instances.rs :: const MAX_MEMORY_GIB ; api/src/app/instances.rs :: const MIN_BOOT_DISK_GIB ; api/src/app/instances.rs :: const MAX_BOOT_DISK_GIB
+doc: Creates an instance with its boot disk and an address, and records it as "creating". Nothing is saved unless every check passes. The instance gets a place on the rack a few seconds later, when it is next looked at.
+---
+def create_instance(caller, project_name, new):
+    with store_lock:
+        #> Find the project; collaborators and admins -> project_roles.authorize_project | ProjectNotFound | Forbidden
+        project, _ = project_roles.authorize_project(
+            caller, project_name, "collaborator")
+        #> Check the name and the sizes -> names.validate_name | InvalidRequest
+        names.validate_name(new.name)
+        if not (1 <= new.ncpus <= 8
+                and 1 <= new.memory_gib <= 32
+                and 10 <= new.boot_disk_size_gib <= 200):
+            raise ApiError.InvalidRequest          # 400
+        #> Refuse a name already used in the project -> instance_store.instance_by_name | InstanceNameTaken | DiskNameTaken
+        if instance_store.instance_by_name(project, new.name):
+            raise ApiError.InstanceNameTaken       # 409
+        # the boot disk is named "<instance name>-boot"
+        if disk_store.disk_by_name(project, boot_disk_name):
+            raise ApiError.DiskNameTaken           # 409
+        #> Check the project's quota -> quotas.check_quota | QuotaExceeded
+        quotas.check_quota(project, new.ncpus,
+            new.memory_gib, new.boot_disk_size_gib)
+        #> Take an address from the pool -> rack_store.address_allocate | AddressPoolExhausted
+        address = rack_store.address_allocate(instance_id)
+        if address is None:
+            raise ApiError.AddressPoolExhausted    # 503
+        #> Create the boot disk, attached -> disk_store.disk_insert
+        boot_disk = disk_store.disk_insert(
+            project, boot_disk_name,
+            new.boot_disk_size_gib, instance_id)
+        #> Record the instance as creating -> instance_store.instance_insert
+        instance = Instance(new, project, boot_disk, address,
+            state: "creating", state_changed_at: now)
+        instance_store.instance_insert(instance)
+        return instance
+
+=== instances.settle_instance
+kind: def
+src: api/src/app/instances.rs :: pub fn settle_instance(
+also: api/src/app/instances.rs :: const SETTLE_SECONDS
+doc: Finishes a change of state that has had its three seconds. Nothing runs in the background: an instance moves on only when someone looks at it, starts, stops or deletes it, or attaches a disk.
+---
+def settle_instance(instance, now):
+    #> Leave it if its change is under three seconds old
+    if now < instance.state_changed_at + 3 seconds:
+        return instance
+    #> Place a creating or starting instance -> placement.place_instance
+    if instance.state in ["creating", "starting"]:
+        # becomes running, or failed if the rack is full
+        return placement.place_instance(instance, now)
+    #> A stopping instance becomes stopped -> instance_store.instance_set_state
+    if instance.state == "stopping":
+        return instance_store.instance_set_state(
+            instance, "stopped", now)
+    return instance
+
+=== instances.lookup_instance
+kind: def
+src: api/src/app/instances.rs :: pub fn lookup_instance(
+doc: Finds an instance by id, checks the caller's role on its project, and brings its state up to date. Someone with no role on the project is told the instance does not exist.
+---
+def lookup_instance(caller, instance_id, needed):
+    #> Find the instance -> instance_store.instance_by_id | InstanceNotFound
+    instance = instance_store.instance_by_id(instance_id)
+    if instance is None:
+        raise ApiError.InstanceNotFound            # 404
+    #> Check the caller's role on its project -> project_roles.require_role | InstanceNotFound | Forbidden
+    # no role at all reads as InstanceNotFound
+    project_roles.require_role(
+        caller, instance.project_id, needed)
+    #> Bring its state up to date -> settle_instance
+    return settle_instance(instance, now)
+
+=== instances.list_instances
+kind: def
+src: api/src/app/instances.rs :: pub fn list_instances(
+doc: The instances of a project, sorted by name, each with its state brought up to date.
+---
+def list_instances(caller, project_name):
+    with store_lock:
+        #> Find the project; any role may look -> project_roles.authorize_project | ProjectNotFound
+        project, _ = project_roles.authorize_project(
+            caller, project_name, "viewer")
+        #> Load its instances -> instance_store.instances_in_project
+        found = instance_store.instances_in_project(
+            project.id)
+        #> Bring each one's state up to date -> settle_instance
+        return [settle_instance(each, now) for each in found]
+
+=== instances.view_instance
+kind: def
+src: api/src/app/instances.rs :: pub fn view_instance(
+doc: One instance as it is now. Any role on its project is enough.
+---
+def view_instance(caller, instance_id):
+    with store_lock:
+        #> Find it; any role may look -> lookup_instance | InstanceNotFound
+        return lookup_instance(caller, instance_id, "viewer")
+
+=== instances.start_instance
+kind: def
+src: api/src/app/instances.rs :: pub fn start_instance(
+doc: Starts a stopped or failed instance. Asking again while it is starting or running changes nothing. An instance that is being created or is stopping must finish first.
+---
+def start_instance(caller, instance_id):
+    with store_lock:
+        #> Find it; collaborators and admins -> lookup_instance | InstanceNotFound | Forbidden
+        instance = lookup_instance(
+            caller, instance_id, "collaborator")
+        #> Leave a running or starting instance alone
+        if instance.state in ["running", "starting"]:
+            return instance
+        #> Mark a stopped or failed instance as starting -> instance_store.instance_set_state
+        if instance.state in ["stopped", "failed"]:
+            # an earlier failure reason is cleared
+            return instance_store.instance_set_state(
+                instance, "starting", now)
+        #> Refuse while it is creating or stopping | InstanceBusy
+        raise ApiError.InstanceBusy                # 409
+
+=== instances.stop_instance
+kind: def
+src: api/src/app/instances.rs :: pub fn stop_instance(
+doc: Stops a running instance. Asking again while it is stopping or stopped changes nothing. An instance that is being created, is starting or has failed cannot be stopped.
+---
+def stop_instance(caller, instance_id):
+    with store_lock:
+        #> Find it; collaborators and admins -> lookup_instance | InstanceNotFound | Forbidden
+        instance = lookup_instance(
+            caller, instance_id, "collaborator")
+        #> Leave a stopped or stopping instance alone
+        if instance.state in ["stopped", "stopping"]:
+            return instance
+        #> Mark a running instance as stopping -> instance_store.instance_set_state
+        if instance.state == "running":
+            # it keeps its place on the rack until stopped
+            return instance_store.instance_set_state(
+                instance, "stopping", now)
+        #> Refuse while creating, starting or failed | InstanceNotRunning
+        raise ApiError.InstanceNotRunning          # 409
+
+=== instances.delete_instance
+kind: def
+src: api/src/app/instances.rs :: pub fn delete_instance(
+doc: Deletes a stopped or failed instance. Its boot disk goes with it, its other disks are detached and kept, and its address returns to the pool.
+---
+def delete_instance(caller, instance_id):
+    with store_lock:
+        #> Find it; collaborators and admins -> lookup_instance | InstanceNotFound | Forbidden
+        instance = lookup_instance(
+            caller, instance_id, "collaborator")
+        #> Refuse unless it is stopped or failed | InstanceNotStopped
+        if instance.state not in ["stopped", "failed"]:
+            raise ApiError.InstanceNotStopped      # 409
+        #> Delete its boot disk and detach the rest -> disk_store.disks_attached_to
+        for disk in disk_store.disks_attached_to(instance.id):
+            if disk.is_boot_disk:
+                disk_store.disk_delete(disk.id)
+            else:
+                disk_store.disk_set_attachment(disk.id, None)
+        #> Return its address to the pool -> rack_store.address_release
+        rack_store.address_release(instance.id)
+        #> Delete the instance -> instance_store.instance_delete
+        instance_store.instance_delete(instance.id)
+
+=== instance_store.instance_set_state
+kind: def
+src: api/src/db/instance_store.rs :: pub fn instance_set_state(
+doc: Moves an instance to a new state and notes when. The reason for a failure is saved with it, and cleared by any later change.
+---
+def instance_set_state(
+        instance_id, state, failure_reason, now):
+    instance.state = state
+    instance.state_changed_at = now
+    instance.failure_reason = failure_reason
+    return instance
+
+=== Creating an instance from the console
+kind: flow
+domain: Instances
+doc: What happens between submitting the create-instance form and seeing the instance running.
+---
+#> The person submits the form -> instance_actions.submit_create_instance
+They choose a name, a number of CPUs, an amount of memory and the size of the boot disk. The console checks the name and sizes, and that the project has enough of its quota left, before sending anything.
+#> The API checks who is asking -> POST /v1/instances
+The person must be signed in and be a collaborator or an admin of the project. A viewer is refused.
+#> The API checks the request -> instances.create_instance
+It checks the name and sizes again, that no instance or boot disk in the project has the name, and that the project's quota has room. Stopped and failed instances still count against the quota.
+#> The instance gets an address and a boot disk -> rack_store.address_allocate
+One address is taken from the rack's pool and a boot disk is created, attached to the instance. If no address is free the request is refused and nothing is created.
+#> The instance is recorded as creating
+The API answers at once. The console shows the instance as "creating".
+#> The console waits -> instance_actions.wait_for_instance
+It asks for the instance once a second, for up to 30 seconds, and stops when it is running or failed.
+#> The rack finds room, or does not -> placement.place_instance
+Three seconds after it was created, the instance is given a place if the rack has the CPUs and memory free, and becomes running. If the rack is full it becomes failed, with a reason the console shows.
+#> The person sees the outcome
+The console reloads the project so the usage is right, then says the instance is running at its address, or that it failed and what to try. A failed instance keeps its disk, address and quota, and can be started again or deleted.
+
+=== Stopping an instance
+kind: flow
+domain: Instances
+doc: What happens when a person stops a running instance.
+---
+#> The person presses Stop and confirms -> instance_actions.stop_instance
+The console offers this only for a running instance, and asks first because whatever runs on the instance is interrupted.
+#> The API checks who is asking and the state -> POST /v1/instances/{instance}/stop
+A collaborator or an admin of the project may stop it. Only a running instance can be stopped. Stopping one that is already stopping or stopped changes nothing, and one that is being created, is starting or has failed is refused.
+#> The instance is marked as stopping -> instances.stop_instance
+It still holds its place on the rack while it stops.
+#> The console waits -> instance_actions.wait_for_instance
+It asks for the instance once a second until it is stopped.
+#> The instance becomes stopped -> instances.settle_instance
+Three seconds later it is stopped, and its CPUs and memory on the rack are free for others. It keeps its disks, its address and its share of the project's quota.

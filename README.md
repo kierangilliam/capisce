@@ -34,6 +34,7 @@ A project needs a `capisce.config.mjs` at its root. `check` and `stamp` need no 
 ## Examples
 
 - `examples/help-desk`: a Go web application and its map.
+- `examples/cloud-console`: a Rust API service and the TypeScript console that calls it, with a map that traces from a click in the console into the service.
 
 ## Develop the page
 

@@ -17,6 +17,7 @@ Before writing anything, find out:
 - Where requests enter (routes, controllers, commands, jobs) and how one is defined in code.
 - Where the data model is defined.
 - The nouns the people who own the product use. The domains should be their words, not folder names.
+- Whether file names are unique and say what they hold. Ids and the lanes of a trace come from the file's name (or its folder's), so two `mod.rs` or `index.ts` files clash until the config names them apart.
 
 ## 2. Write `capisce.config.mjs`
 
@@ -43,7 +44,7 @@ export default {
 - **`extract`** says what is read from the code. Each rule finds symbols in the files it names. `files` is one glob or a list (`*` stays in one folder, `**` crosses folders). `exclude` is a list of globs to leave out; tests are left out by default (`*.test.*`, `*.spec.*`, `*_test.*`, `test_*`), and giving `exclude` replaces that list, so repeat the test globs you still need.
   - `functions` finds exported functions. Each becomes `<file>.<name>`. Give `patterns` (regular expressions with a `name` group) for another language or style. Where people name things by folder and type, not by file, set `module: "folder"` and add a `receiver` group: the id becomes `<folder>.<receiver>.<name>`, such as `orders.Service.Refund`. Narrow the `name` group to what a reader would look up: `[A-Z]\w*` reads only what Go exports, for example. Two functions must never get the same id: the build fails if they do.
   - `routes` finds endpoints (it takes `module: "folder"` too), and makes each one something the check requires pseudo-code for. Give `definition` (a line that starts an endpoint) and `pattern` (with `method` and `path` groups) if the framework does not write `app.get("/path", …)`. Give `span` when the method and path sit more than two lines into the definition.
-  - A path names your own extractor: a module whose default export takes `{ rule, files, lines_of, statement_at, short_doc }` and returns `{ symbols, required, links }`. `files(globs, exclude)` lists matching paths; `lines_of(path)` gives a file's lines; `statement_at(path, line_index)` gives `{ src, comment }` for the statement starting on that line, where `src` is `{ path, start, end, code }`; `short_doc(comment)` trims a comment to a description. A symbol is `{ id, kind, doc, src }`, with `pseudo` (lines) if you generate it. Use one for the data model, since every framework defines models differently. Give each model `kind: "model"` and write its `pseudo` from its fields; return `links` as `{ from, field, to }` for fields that point at another model. `required` lists places (`{ path, line, start, end }`) that must have pseudo-code.
+  - A path names your own extractor: a module whose default export takes `{ rule, files, lines_of, statement_at, short_doc }` and returns `{ symbols, required, links }`. `files(globs, exclude)` lists matching paths; `lines_of(path)` gives a file's lines; `statement_at(path, line_index)` gives `{ src, comment }` for the statement starting on that line, where `src` is `{ path, start, end, code }`; `short_doc(comment)` trims a comment to a description. A symbol is `{ id, kind, doc, src }`, with `pseudo` (a list of lines) if you generate it; in a model's pseudo-code, `# -> [[Other]]` after a field links it to that model. The examples folder has extractors to copy from. Use one for the data model, since every framework defines models differently. Give each model `kind: "model"` and write its `pseudo` from its fields; return `links` as `{ from, field, to }` for fields that point at another model. `required` lists places (`{ path, line, start, end }`) that must have pseudo-code.
 
 Patterns for other languages, as a start:
 
@@ -85,7 +86,7 @@ more:
 - **`at`** is the column and row on the canvas. Put domains that relate next to each other.
 - **`tag`** is a few words under the name. **`doc`** is what the domain is, in plain words, with the rules that matter.
 - **`models`** names the models it holds. **`files`** lists its files, with `*` where that helps. When one file holds things from several domains (a single routes file, say), give those blocks a `domain:` line in the map instead.
-- **`relations`** are drawn as arrows on the canvas, so keep them to the few that matter and to neighbours where you can. **`more`** are relations shown on the domain's page only.
+- **`relations`** are drawn as arrows on the canvas, so keep them to the few that matter and to neighbours where you can. A label between neighbours has room for two or three short words. **`more`** are relations shown on the domain's page only.
 - One domain may have `frame: true`: it is drawn as a frame around the rest, for the thing everything belongs to, such as an account or a workspace.
 - A domain with `hidden: true` holds files that are not part of the business, such as logging.
 

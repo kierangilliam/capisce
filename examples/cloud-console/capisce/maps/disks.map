@@ -1,0 +1,162 @@
+=== GET /v1/disks
+kind: route
+group: Disks
+src: api/src/external_api/disk_endpoints.rs :: #[endpoint { method = GET, path = "/v1/disks",
+doc: Lists the disks of a project, attached or not, sorted by name.
+---
+route GET /v1/disks(project):
+    #> Find who is calling -> session_auth.authenticate | 401
+    caller = session_auth.authenticate(request)
+    #> List the project's disks -> disks.list_disks | 404 ProjectNotFound
+    return disks.list_disks(caller, project)
+
+=== POST /v1/disks
+kind: route
+group: Disks
+src: api/src/external_api/disk_endpoints.rs :: #[endpoint { method = POST, path = "/v1/disks",
+doc: Creates an empty disk in a project, attached to nothing.
+---
+route POST /v1/disks(project, name, size_gib):
+    #> Find who is calling -> session_auth.authenticate | 401
+    caller = session_auth.authenticate(request)
+    #> Create the disk -> disks.create_disk | 400 | 403 | 404 | 409
+    # 404 ProjectNotFound, 400 InvalidRequest,
+    # 403 Forbidden or QuotaExceeded, 409 DiskNameTaken
+    disk = disks.create_disk(caller, project, name, size_gib)
+    return 201, disk
+
+=== DELETE /v1/disks/{disk}
+kind: route
+group: Disks
+src: api/src/external_api/disk_endpoints.rs :: #[endpoint { method = DELETE, path = "/v1/disks/{disk}",
+doc: Deletes a disk that is attached to nothing.
+---
+route DELETE /v1/disks/{disk}(disk):
+    #> Find who is calling -> session_auth.authenticate | 401
+    caller = session_auth.authenticate(request)
+    #> Delete the disk -> disks.delete_disk | 404 DiskNotFound | 403 Forbidden | 409 DiskAttached
+    disks.delete_disk(caller, disk)
+    return 204
+
+=== disks.list_disks
+kind: def
+src: api/src/app/disks.rs :: pub fn list_disks(
+doc: The disks of a project, sorted by name. Any role is enough.
+---
+def list_disks(caller, project_name):
+    with store_lock:
+        #> Find the project; any role may look -> project_roles.authorize_project | ProjectNotFound
+        project, _ = project_roles.authorize_project(
+            caller, project_name, "viewer")
+        return disk_store.disks_in_project(project.id)
+
+=== disks.create_disk
+kind: def
+src: api/src/app/disks.rs :: pub fn create_disk(
+also: api/src/app/disks.rs :: const MAX_DISK_GIB
+doc: Creates an empty disk of 1 to 1000 GiB in a project, within the project's storage quota.
+---
+def create_disk(caller, project_name, name, size_gib):
+    with store_lock:
+        #> Find the project; collaborators and admins -> project_roles.authorize_project | ProjectNotFound | Forbidden
+        project, _ = project_roles.authorize_project(
+            caller, project_name, "collaborator")
+        #> Check the name and the size -> names.validate_name | InvalidRequest
+        names.validate_name(name)
+        if not 1 <= size_gib <= 1000:
+            raise ApiError.InvalidRequest          # 400
+        #> Refuse a name another disk in the project has -> disk_store.disk_by_name | DiskNameTaken
+        if disk_store.disk_by_name(project.id, name):
+            raise ApiError.DiskNameTaken           # 409
+        #> Check the storage quota -> quotas.check_quota | QuotaExceeded
+        quotas.check_quota(project, 0, 0, size_gib)
+        #> Save the disk, attached to nothing -> disk_store.disk_insert
+        return disk_store.disk_insert(
+            project.id, name, size_gib, None)
+
+=== disks.attach_disk
+kind: def
+src: api/src/app/disks.rs :: pub fn attach_disk(
+also: api/src/app/disks.rs :: const MAX_DISKS_PER_INSTANCE
+doc: Attaches a disk to an instance of the same project. The instance must be stopped, a disk serves one instance at a time, and an instance holds at most four disks counting its boot disk.
+---
+def attach_disk(caller, instance_id, disk_id):
+    with store_lock:
+        #> Find the instance; collaborators and admins -> instances.lookup_instance | InstanceNotFound | Forbidden
+        instance = instances.lookup_instance(
+            caller, instance_id, "collaborator")
+        #> Find the disk in the same project -> disk_store.disk_by_id | DiskNotFound
+        disk = disk_store.disk_by_id(disk_id)
+        if (disk is None
+                or disk.project_id != instance.project_id):
+            raise ApiError.DiskNotFound            # 404
+        #> Leave a disk this instance already holds
+        # this comes before the state check, so it
+        # succeeds even while the instance is running
+        if disk.attached_instance_id == instance.id:
+            return disk
+        #> Refuse a disk another instance holds | DiskAttached
+        if disk.attached_instance_id is not None:
+            raise ApiError.DiskAttached            # 409
+        #> Refuse unless the instance is stopped | InstanceNotStopped
+        # a failed instance is refused too
+        if instance.state != "stopped":
+            raise ApiError.InstanceNotStopped      # 409
+        #> Refuse a fifth disk -> disk_store.disks_attached_to | TooManyDisks
+        held = disk_store.disks_attached_to(instance.id)
+        if len(held) >= 4:
+            raise ApiError.TooManyDisks            # 409
+        #> Attach it -> disk_store.disk_set_attachment
+        return disk_store.disk_set_attachment(
+            disk.id, instance.id)
+
+=== disks.delete_disk
+kind: def
+src: api/src/app/disks.rs :: pub fn delete_disk(
+doc: Deletes a disk that is attached to nothing. A boot disk is always attached, so it can only go with its instance.
+---
+def delete_disk(caller, disk_id):
+    with store_lock:
+        #> Find the disk -> disk_store.disk_by_id | DiskNotFound
+        disk = disk_store.disk_by_id(disk_id)
+        if disk is None:
+            raise ApiError.DiskNotFound            # 404
+        #> Check the caller's role on its project -> project_roles.require_role | DiskNotFound | Forbidden
+        # collaborators and admins
+        # no role at all reads as DiskNotFound
+        project_roles.require_role(
+            caller, disk.project_id, "collaborator")
+        #> Refuse an attached disk | DiskAttached
+        if disk.attached_instance_id is not None:
+            raise ApiError.DiskAttached            # 409
+        #> Delete it -> disk_store.disk_delete
+        disk_store.disk_delete(disk.id)
+
+=== disk_store.disk_insert
+kind: def
+src: api/src/db/disk_store.rs :: pub fn disk_insert(
+doc: Saves a new disk. A disk created for an instance is its boot disk and starts attached to it. Any other disk starts attached to nothing.
+---
+def disk_insert(
+        project_id, name, size_gib, boot_for_instance_id):
+    disk = Disk(project_id, name, size_gib,
+        attached_instance_id: boot_for_instance_id,
+        is_boot_disk: boot_for_instance_id is not None)
+    save disk
+    return disk
+
+=== Attaching a disk to an instance
+kind: flow
+domain: Disks
+doc: How extra storage gets from a project onto an instance.
+---
+#> The person creates a disk -> disk_actions.submit_create_disk
+They give it a name and a size from 1 to 1000 GiB. It must fit in what is left of the project's storage quota. The new disk is attached to nothing.
+#> The person picks the disk on an instance -> disk_actions.attach_disk
+The console allows this only while the instance is stopped, and says to stop it first otherwise.
+#> The API checks the instance and the disk -> POST /v1/instances/{instance}/disks/attach
+The person must be a collaborator or an admin of the instance's project, and the disk must be in the same project.
+#> The rules for attaching are applied -> disks.attach_disk
+A disk serves one instance at a time, so a disk another instance holds is refused. The instance must be stopped. An instance holds at most four disks, counting its boot disk.
+#> The disk stays with the instance
+It stays attached while the instance starts and stops. When the instance is deleted, the disk is detached and kept, and only the boot disk is deleted.

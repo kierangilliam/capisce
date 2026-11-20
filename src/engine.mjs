@@ -135,11 +135,13 @@ function source_reader(root, config) {
         break;
       }
     }
-    while (start > 0 && /^\s*(\/\/|\/\*\*|\*)/.test(lines[start - 1])) {
+    // Comments, and one-line attributes or decorators, sit above a definition and belong to it.
+    while (start > 0 && /^\s*(\/\/|\/\*\*|\*|#\[.*\]$|@\w)/.test(lines[start - 1])) {
       start -= 1;
     }
     const comment = lines
       .slice(start, index)
+      .filter((line) => !/^\s*(#\[|@\w)/.test(line))
       .map((line) => line.replace(/^\s*(\/\*\*|\*\/|\*|\/\/+!?)\s?/, "").replace(/\s*\*\/$/, ""))
       .join(" ")
       .trim();
@@ -241,9 +243,13 @@ function extract_routes({ rule, files, lines_of, statement_at }) {
         return;
       }
       const { src, comment } = statement_at(path, index);
-      required.push({ path, line: index + 1, start: src.start, end: src.end });
       const opening = lines.slice(index, index + (rule.span ?? 2)).join("");
       const found = (rule.pattern ?? ROUTE_ID).exec(opening)?.groups;
+      let label = "";
+      if (found !== undefined) {
+        label = `${found.method.toUpperCase()} ${found.path}`;
+      }
+      required.push({ path, line: index + 1, start: src.start, end: src.end, label });
       if (found !== undefined) {
         symbols.push({
           id: `${found.method.toUpperCase()} ${found.path}`,
@@ -319,7 +325,7 @@ export async function build_map(root, config, { config_root = root, only, strict
       return { ...symbol, module: "", src: NO_SOURCE };
     }
     if (symbol.src === undefined) {
-      throw new Error(`${symbol.id} in ${config.maps}/${symbol.map}.map has no src: line.`);
+      return { ...symbol, module: "", src: undefined };
     }
     let also_code = "";
     if (symbol.also !== undefined) {
@@ -338,7 +344,7 @@ export async function build_map(root, config, { config_root = root, only, strict
 
   const symbols = new Map(authored.map((symbol) => [symbol.id, symbol]));
   const authored_at = new Set(
-    authored.flatMap((symbol) => (symbol.kind === "flow" ? [] : [`${symbol.src.path}:${symbol.src.start}`])),
+    authored.flatMap((symbol) => (symbol.src === undefined || symbol.kind === "flow" ? [] : [`${symbol.src.path}:${symbol.src.start}`])),
   );
   const found = [];
   const required = [];
@@ -367,6 +373,15 @@ export async function build_map(root, config, { config_root = root, only, strict
     const written_one = symbols.get(symbol.id);
     if (written_one !== undefined && written_one !== symbol) {
       written_one.module = symbol.module;
+      // A block may leave out its src: line when its id is one the code gives: it describes that code.
+      written_one.src ??= symbol.src;
+    }
+  }
+  for (const symbol of authored) {
+    if (symbol.src === undefined) {
+      throw new Error(
+        `${symbol.id} in ${config.maps}/${symbol.map}.map has no src: line, and nothing read from the code has that id. Add a src: line, or fix the id.`,
+      );
     }
   }
 

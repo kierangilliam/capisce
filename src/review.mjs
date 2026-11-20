@@ -19,7 +19,14 @@ export function review_needed(map, root, config) {
     lock = JSON.parse(readFileSync(stamps_path, "utf8"));
   }
   const by_id = new Map(map.symbols.map((symbol) => [symbol.id, symbol]));
-  const where = (id) => `  ${id}    ${by_id.get(id).src.path}:${by_id.get(id).src.start}`;
+  const where = (id) => {
+    const { src, also } = by_id.get(id);
+    let also_note = "";
+    if (also !== undefined) {
+      also_note = `    or the code on its also: line (${also.split(" :: ")[0]})`;
+    }
+    return `  ${id}    ${src.path}:${src.start}${also_note}`;
+  };
   const changed = Object.keys(stamps).filter((id) => lock[id] !== undefined && lock[id] !== stamps[id]);
   const unstamped = Object.keys(stamps).filter((id) => lock[id] === undefined);
   const gone = Object.keys(lock).filter((id) => stamps[id] === undefined);

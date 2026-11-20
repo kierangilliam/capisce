@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 // capisce build [out.html] [--base <git ref>] [--only <map>] [--json <out.json>]   build the page
+//   with --json and no out.html, only the data is written
 // capisce check                                                                    fail when the map needs a review
 // capisce stamp                                                                    record that the map was reviewed
 // capisce serve <folder> [--port <n>]                                              serve a built page with comments

@@ -46,11 +46,12 @@ route POST /api/orders/:id/refund(id, amount=None):
     return refund
 ```
 
-- **`===` id.** An endpoint is `METHOD path`, with the path exactly as the code has it. A function is `<file name without its extension>.<function name>`, for example `payment_service.refund`. A class method uses its file name too. A flow or a term is a plain name. An id is used once across all map files.
-- **`kind`.** `route`, `def`, `flow` or `term`. A term has a `doc` and no pseudo-code. If the project generates some kinds from the code (models, for example), never write those by hand.
+- **`===` id.** An endpoint is `METHOD path`, with the path exactly as the code has it. A function is `<file name without its extension>.<function name>`, for example `payment_service.refund`, unless the project's config names functions another way: use the ids `capisce build --json` gives. A flow or a term is a plain name. An id is used once across all map files.
+- **`kind`.** `route`, `def`, `flow` or `term`. A term has a `doc` and a `src`, and no pseudo-code. If the project generates some kinds from the code (models, for example), never write those by hand.
 - **`group`.** Endpoints only: a short plain name for endpoints that belong together, such as "Refunds".
 - **`src`.** `<path> :: <the start of the line the code begins on>`. It must match exactly one line of the file.
-- **`also`.** Optional: more code the pseudo-code describes, as `<path> :: <line start>` entries joined by ` ; `. Use it when the `src` line only passes the call on, so a change in the code behind it asks for a review too.
+- **`also`.** Optional: more code the pseudo-code describes, as `<path> :: <line start>` entries joined by ` ; `. Use it when the `src` line only passes the call on, such as a route registration that names its handler, so a change in the code behind it asks for a review too. Code named only on an `also` line should not also be read as a function, or it shows up as one with no pseudo-code.
+- **`domain`.** Optional for code, required for a flow: the domain this belongs to, when it is not the domain of its file.
 - **`doc`.** One or two sentences in plain words: what this does and why someone would call it. No internal names.
 - **Pseudo-code**, after `---`. Python-like and short, at most about 62 characters a line. It says what happens and in what order, with the conditions and outcomes that matter to the business. Leave out logging detail, types, retries and plumbing. Name the errors and statuses a caller can get.
 

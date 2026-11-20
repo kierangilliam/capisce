@@ -7,7 +7,7 @@ description: Build a capisce map for a codebase that has none: write the config,
 
 A capisce map lets someone read a codebase at the level of business behavior: its domains and how they relate, the flows through them, and pseudo-code beside the real code. Building one is five steps. Read the maintain skill too (`capisce skill maintain`): it has the format of a block and the rules for writing one.
 
-Run capisce as `node <capisce>/bin/capisce.mjs <command>` from the root of the project, and add scripts that wrap `build`, `check` and `stamp` so others do not need the path.
+Run capisce as `node <capisce>/bin/capisce.mjs <command>` from the root of the project. Add commands that wrap `build`, `check` and `stamp` so others do not need the path: package scripts, a Makefile, or whatever the project already uses.
 
 ## 1. Learn the codebase's shape
 
@@ -40,12 +40,27 @@ export default {
 
 - **`sources`** are the folders a branch comparison needs from an older commit.
 - **`commands.stamp`** is what the check tells people to run.
-- **`extract`** says what is read from the code. Each rule finds symbols in the files it names.
-  - `functions` finds exported functions. Each becomes `<file>.<name>`. Give `patterns` (regular expressions with a `name` group) for another language or style.
+- **`extract`** says what is read from the code. Each rule finds symbols in the files it names. `files` is one glob or a list (`*` stays in one folder, `**` crosses folders). `exclude` is a list of globs to leave out; tests are left out by default (`*.test.*`, `*.spec.*`, `*_test.*`, `test_*`), and giving `exclude` replaces that list, so repeat the test globs you still need.
+  - `functions` finds exported functions. Each becomes `<file>.<name>`. Give `patterns` (regular expressions with a `name` group) for another language or style. Where people name things by folder and type, not by file, set `module: "folder"` and add a `receiver` group: the id becomes `<folder>.<receiver>.<name>`. Two functions must never get the same id: the build fails if they do.
   - `routes` finds endpoints, and makes each one something the check requires pseudo-code for. Give `definition` (a line that starts an endpoint) and `pattern` (with `method` and `path` groups) if the framework does not write `app.get("/path", …)`. Give `span` when the method and path sit more than two lines into the definition.
-  - A path names your own extractor: a module whose default export takes `{ rule, files, lines_of, statement_at, short_doc }` and returns `{ symbols, required, links }`. Use one for the data model, since every framework defines models differently. Give each model `kind: "model"` and write its `pseudo` from its fields; return `links` as `{ from, field, to }` for fields that point at another model. `required` lists places (`{ path, line, start, end }`) that must have pseudo-code.
+  - A path names your own extractor: a module whose default export takes `{ rule, files, lines_of, statement_at, short_doc }` and returns `{ symbols, required, links }`. `files(globs, exclude)` lists matching paths; `lines_of(path)` gives a file's lines; `statement_at(path, line_index)` gives `{ src, comment }` for the statement starting on that line, where `src` is `{ path, start, end, code }`; `short_doc(comment)` trims a comment to a description. A symbol is `{ id, kind, doc, src }`, with `pseudo` (lines) if you generate it. Use one for the data model, since every framework defines models differently. Give each model `kind: "model"` and write its `pseudo` from its fields; return `links` as `{ from, field, to }` for fields that point at another model. `required` lists places (`{ path, line, start, end }`) that must have pseudo-code.
 
-A statement is read from its first line to the line where its brackets close and it ends in `;` or `}`. For a language without semicolons, list its file extension in `balanced_extensions` (`.go` is there already), so a statement ends as soon as its brackets close.
+Patterns for other languages, as a start:
+
+```js
+// Go: functions and methods, named by package and type
+{ use: "functions", files: "internal/**/*.go", module: "folder",
+  patterns: [/^func (?:\(\w+ \*?(?<receiver>\w+)\) )?(?<name>\w+)[\[(]/] },
+// Go: mux.HandleFunc("POST /orders/{id}/refund", h.refund)
+{ use: "routes", files: "web/routes.go", span: 1,
+  definition: /^\s*mux\.HandleFunc\(/,
+  pattern: /HandleFunc\("(?<method>[A-Z]+) (?<path>[^"]+)"/ },
+// Rust: pub fn and pub async fn, at any indent
+{ use: "functions", files: "src/app/*.rs",
+  patterns: [/^\s*pub(?:\(crate\))? (?:async )?fn (?<name>\w+)/] },
+```
+
+A statement is read from its first line to the line where its brackets close and it ends in `;` or `}`. Brackets inside a string that runs over several lines are still counted, so check the extracted code of anything near one. For a language without semicolons, list its file extension in `balanced_extensions` (`.go` is there already), so a statement ends as soon as its brackets close.
 
 Run `capisce build out.html --json out.json` and read the JSON to see what was found. Fix the rules until the symbols are the ones a reader would expect: no tests, no generated code, no helpers nobody would look up.
 
@@ -69,7 +84,7 @@ more:
 
 - **`at`** is the column and row on the canvas. Put domains that relate next to each other.
 - **`tag`** is a few words under the name. **`doc`** is what the domain is, in plain words, with the rules that matter.
-- **`models`** names the models it holds. **`files`** lists its files, with `*` where that helps.
+- **`models`** names the models it holds. **`files`** lists its files, with `*` where that helps. When one file holds things from several domains (a single routes file, say), give those blocks a `domain:` line in the map instead.
 - **`relations`** are drawn as arrows on the canvas, so keep them to the few that matter and to neighbours where you can. **`more`** are relations shown on the domain's page only.
 - One domain may have `frame: true`: it is drawn as a frame around the rest, for the thing everything belongs to, such as an account or a workspace.
 - A domain with `hidden: true` holds files that are not part of the business, such as logging.
@@ -92,6 +107,6 @@ Write only what the code does. Each author should reread a few of their blocks a
 
 - `capisce build out.html` with every map file. Fix any id used twice and any stage that points at nothing.
 - Read the domain descriptions again against what the authors found, and correct them.
-- `capisce check`, then `capisce stamp`. Commit the map files, the config and the stamps.
+- `capisce stamp`, then `capisce check` to confirm it passes. Commit the map files, the config and the stamps.
 - Add `capisce check` to the project's own checks, and tell contributors about the maintain skill.
 - `capisce serve <folder>` serves a built page (copy it there as `index.html`) with comments and notes, for review.

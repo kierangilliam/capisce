@@ -85,8 +85,8 @@ function parse_domains(text) {
 // Brackets inside strings and comments do not count.
 function bracket_depth_change(line) {
   const code = line
-    .replace(/\/\/.*$/, "")
-    .replace(/"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'|`(?:[^`\\]|\\.)*`/g, "");
+    .replace(/"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'|`(?:[^`\\]|\\.)*`/g, "")
+    .replace(/\/\/.*$/, "");
   let change = 0;
   for (const char of code) {
     if ("({[".includes(char)) {
@@ -188,6 +188,7 @@ const short_doc = (comment) => {
 };
 
 const module_of = (path) => basename(path, extname(path));
+const folder_of = (path) => basename(join(path, ".."));
 
 const FUNCTION_PATTERNS = [
   /^export (?:async )?function (?<name>\w+)/,
@@ -195,18 +196,28 @@ const FUNCTION_PATTERNS = [
 ];
 const ROUTE_DEFINITION = /^\s*app\.(get|post|put|patch|delete|all|on)\(/;
 const ROUTE_ID = /^\s*\w+\.(?<method>get|post|put|patch|delete)\(\s*"(?<path>[^"]+)"/;
-const TEST_FILES = ["**/*.test.*", "**/*.spec.*"];
+const TEST_FILES = ["**/*.test.*", "**/*.spec.*", "**/*_test.*", "**/test_*"];
 
-/** Finds the functions a file exports. Each becomes `<file>.<name>`. */
+/**
+ * Finds the functions a file exports. Each becomes `<module>.<name>`, or `<module>.<receiver>.<name>` when the pattern
+ * that matched has a `receiver` group. The module is the file's name, or its folder's with `module: "folder"`, for
+ * languages where a folder is the unit people name.
+ */
 function extract_functions({ rule, files, lines_of, statement_at }) {
   const symbols = [];
   for (const path of files(rule.files, rule.exclude ?? TEST_FILES)) {
+    let module = module_of(path);
+    if (rule.module === "folder") {
+      module = folder_of(path);
+    }
     lines_of(path).forEach((line, index) => {
-      const name = (rule.patterns ?? FUNCTION_PATTERNS).map((pattern) => pattern.exec(line)?.groups.name).find(Boolean);
-      if (name !== undefined) {
-        const { src, comment } = statement_at(path, index);
-        symbols.push({ id: `${module_of(path)}.${name}`, kind: "def", doc: short_doc(comment), src });
+      const found = (rule.patterns ?? FUNCTION_PATTERNS).map((pattern) => pattern.exec(line)?.groups).find(Boolean);
+      if (found === undefined) {
+        return;
       }
+      const { src, comment } = statement_at(path, index);
+      const name = [found.receiver, found.name].filter(Boolean).join(".");
+      symbols.push({ id: `${module}.${name}`, kind: "def", doc: short_doc(comment), module, src });
     });
   }
   return { symbols };
@@ -334,6 +345,12 @@ export async function build_map(root, config, { config_root = root, only, strict
     data_links.push(...(result.links ?? []));
     for (const symbol of result.symbols ?? []) {
       const whole = { pseudo: [], doc: "", module: module_of(symbol.src.path), ...symbol };
+      const twin = found.find((other) => other.id === whole.id && other.src.start !== whole.src.start);
+      if (twin !== undefined) {
+        throw new Error(
+          `Two things in the code are named ${whole.id}: ${twin.src.path}:${twin.src.start} and ${whole.src.path}:${whole.src.start}. Change the rule in the config so each gets its own name, or leave one out.`,
+        );
+      }
       found.push(whole);
       if (!symbols.has(whole.id) && !authored_at.has(`${whole.src.path}:${whole.src.start}`)) {
         symbols.set(whole.id, whole);
@@ -423,6 +440,12 @@ export async function build_map(root, config, { config_root = root, only, strict
     }
   }
 
+  for (const symbol of found) {
+    const written_one = symbols.get(symbol.id);
+    if (written_one !== undefined && written_one !== symbol) {
+      written_one.module = symbol.module;
+    }
+  }
   const authored_ids = new Set(authored.map((symbol) => symbol.id));
   for (const symbol of symbols.values()) {
     symbol.authored = authored_ids.has(symbol.id);

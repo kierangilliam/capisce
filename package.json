@@ -1,0 +1,9 @@
+{
+  "name": "capisce",
+  "version": "0.1.0",
+  "description": "A map of a codebase at the level of business behavior: domains, flows and pseudo-code, kept in step with the code.",
+  "type": "module",
+  "private": true,
+  "bin": { "capisce": "bin/capisce.mjs" },
+  "scripts": {}
+}

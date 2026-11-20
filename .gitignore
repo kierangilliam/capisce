@@ -1,0 +1,4 @@
+node_modules
+dist
+viewer/dev-data.json
+*.log

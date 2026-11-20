@@ -31,6 +31,10 @@ A project needs a `capisce.config.mjs` at its root. `check` and `stamp` need no 
 
 `node bin/capisce.mjs skill <name>` prints one.
 
+## Examples
+
+- `examples/help-desk`: a Go web application and its map.
+
 ## Develop the page
 
 The page is a Svelte app in `viewer/`, built into one file at `dist/viewer.html`.

@@ -1,0 +1,103 @@
+=== GET /agents
+kind: route
+group: Agents
+domain: Agents and teams
+src: web/routes.go :: mux.HandleFunc("GET /agents",
+also: web/account_handlers.go :: func (s *Server) listAgents(
+doc: Lists the agents on the caller's own team, for picking who gets a ticket.
+---
+route GET /agents():
+    #> Check the session -> web.Server.signedIn | 401
+    actor = signedIn()
+    #> List the team -> accounts.Directory.Agents | 403 NotAllowed
+    return 200, accounts.Directory.Agents(actor)
+
+=== POST /agents/{id}/deactivate
+kind: route
+group: Agents
+domain: Agents and teams
+src: web/routes.go :: mux.HandleFunc("POST /agents/{id}/deactivate",
+also: web/account_handlers.go :: func (s *Server) deactivateAgent(
+doc: A lead turns off the account of an agent on their team. The agent's unfinished tickets go back to the team.
+---
+route POST /agents/{id}/deactivate(id):
+    #> Check the session -> web.Server.signedIn | 401
+    actor = signedIn()
+    #> Turn the account off -> accounts.Directory.Deactivate | 403 NotAllowed | 404 AgentNotFound | 409 LastLead
+    agent = accounts.Directory.Deactivate(actor, id)
+    #> Free their tickets -> tickets.Service.ReleaseFrom
+    released = tickets.Service.ReleaseFrom(agent.ID)
+    return 200, {agent, tickets_released: released}
+
+=== accounts.Directory.Agents
+kind: def
+src: internal/accounts/agents.go :: func (d *Directory) Agents(
+doc: Lists the agents on the caller's team, active or not, with leads first.
+---
+def Agents(actor):
+    if not actor.IsAgent():
+        raise NotAllowed
+    team = agents where TeamID == actor.TeamID
+    return team sorted leads first, then by Name
+
+=== accounts.Directory.TeamForTopic
+kind: def
+src: internal/accounts/agents.go :: func (d *Directory) TeamForTopic(
+doc: Picks the team that handles a ticket's topic. A topic no team lists goes to the catch-all team.
+---
+def TeamForTopic(topic):
+    topic = topic in lower case, without spaces around it
+    for team in teams:
+        if topic in team.Topics:
+            return team
+    return the team with CatchAll
+
+=== accounts.Directory.Deactivate
+kind: def
+src: internal/accounts/agents.go :: func (d *Directory) Deactivate(
+doc: Turns off an agent's account and signs them out everywhere. A team always keeps at least one active lead.
+---
+def Deactivate(actor, id):
+    #> Only a lead | NotAllowed
+    if not actor.Lead:
+        raise NotAllowed
+    #> The agent must be on the lead's own team | AgentNotFound
+    agent = agents[id]
+    if none or agent.TeamID != actor.TeamID:
+        raise AgentNotFound
+    if not agent.Active:
+        return agent   # already off
+    #> The team's last active lead stays | LastLead
+    if agent.Lead and the team has one active lead:
+        raise LastLead
+    #> Turn the account off and end their sessions
+    agent.Active = False
+    forget every Session of this agent
+    return agent
+
+=== tickets.Service.ReleaseFrom
+kind: def
+src: internal/tickets/assignment.go :: func (s *Service) ReleaseFrom(
+doc: Takes every ticket that is not closed away from an agent who has left, and asks the team's leads to find each a new owner.
+---
+def ReleaseFrom(agentID):
+    for ticket assigned to agentID and not closed:
+        #> Nobody has the ticket now
+        ticket.AssignedAgentID = None
+        #> Tell the team's leads -> tickets.Service.announceReleased
+        announceReleased(ticket)
+    return the ids of those tickets
+
+=== An agent leaves
+kind: flow
+domain: Agents and teams
+doc: What happens to an agent's work when their account is turned off.
+---
+#> A lead deactivates the agent -> POST /agents/{id}/deactivate
+A lead can turn off the account of anyone on their own team, including another lead, as long as the team keeps one active lead.
+#> The agent is signed out -> accounts.Directory.Deactivate
+Their sessions end at once and they can no longer sign in.
+#> Their tickets go back to the team -> tickets.Service.ReleaseFrom
+Every ticket of theirs that is not closed has no assignee again. Its status and its deadline stay as they were.
+#> The leads are asked to find new owners -> tickets.Service.announceReleased
+The team's leads get a notice for each ticket that needs a new owner.

@@ -1,0 +1,56 @@
+=== Customers
+at: 0,0
+tag: The people who ask for help
+doc: A customer opens tickets and sees only their own. Each customer is on a plan: free, standard or premium. The plan sets how fast we promise to reply and how urgent a ticket they may open. Only agents see the list of customers, and only a lead changes a plan.
+models: Customer
+files: internal/accounts/customers.go
+relations:
+  Tickets: open
+more:
+  Access: sign in through
+  Deadlines: their plan sets
+
+=== Tickets
+at: 1,0
+tag: Requests for help
+doc: A ticket is one request from a customer, handled by one team. It is new until an agent takes it or answers, open while the customer waits for us, waiting while we wait for the customer, and closed at the end. Replies move it between those. An agent's internal notes stay between agents. A closed ticket can be reopened for seven days; after that only a lead can.
+models: Ticket, Reply
+files: internal/tickets/tickets.go, internal/tickets/status.go, internal/tickets/assignment.go, internal/tickets/escalation.go, web/routes.go, web/ticket_handlers.go
+relations:
+  Agents and teams: are worked by
+  Deadlines: must be answered by
+  Notifications: tell people through
+
+=== Agents and teams
+at: 2,0
+tag: The staff who answer
+doc: An agent answers tickets for one team. A team handles certain topics, and one team catches every other topic. A lead is an agent who may also reassign and escalate the team's tickets, change a customer's plan and deactivate an agent. A team always keeps at least one active lead.
+models: Agent, Team
+files: internal/accounts/agents.go, web/account_handlers.go
+more:
+  Access: sign in through
+  Notifications: hear news through
+
+=== Access
+at: 0,1
+tag: Who may see and do what
+doc: People sign in with an email and a password and get a session for twelve hours. Every other request needs a live session. A customer sees their own tickets; an agent sees and works on their team's. A ticket someone may not see looks the same to them as one that does not exist.
+models: Session
+files: internal/accounts/sessions.go, internal/tickets/permissions.go, web/auth.go, web/respond.go, web/session_handlers.go
+relations:
+  Tickets: guards
+
+=== Deadlines
+at: 1,1
+tag: How long a customer may wait
+doc: While a customer waits for us, their ticket has a deadline for our reply. The priority sets it: one hour for urgent, four for high, eight for normal, a day for low. Premium customers wait half as long; free customers twice as long, and never less than eight hours. A ticket that passes its deadline is marked overdue and escalated, and its team is told.
+files: internal/deadlines/*.go, internal/tickets/clock.go, web/report_handlers.go
+
+=== Notifications
+at: 2,1
+tag: Who is told about what
+doc: A notice is one message to one person about a ticket, read in the app. News from a customer goes to the ticket's assignee, or to the team's leads while nobody has the ticket. News from an agent goes to the customer. Nobody is told about what they did themselves, and nobody gets a second unread notice of the same kind about the same ticket.
+models: Notice
+files: internal/notify/outbox.go, internal/tickets/announce.go
+relations:
+  Agents and teams: reach

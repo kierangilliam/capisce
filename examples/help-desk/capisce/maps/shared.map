@@ -1,0 +1,51 @@
+=== actor
+kind: term
+src: internal/accounts/sessions.go :: type Actor struct
+doc: The signed-in person behind a request. A customer has a CustomerID. An agent has an AgentID, the TeamID of their team, and Lead when they lead it.
+
+=== web.Server.signedIn
+kind: def
+src: web/auth.go :: func (s *Server) signedIn(
+doc: Wraps every endpoint except signing in and out. It lets a request through only with a live session, and gives the endpoint the person behind it.
+---
+def signedIn(next):
+    #> Read the session token
+    token = cookie "helpdesk_session"
+        or the "Authorization: Bearer" header
+    #> Find who it belongs to -> accounts.Directory.Authenticate | 401 NotSignedIn
+    actor = accounts.Directory.Authenticate(token)
+    #> Hand over to the endpoint
+    next(request, actor)
+
+=== web.readJSON
+kind: def
+src: web/respond.go :: func readJSON(
+doc: Reads the JSON body of a request. An empty body is accepted, so every field is then empty.
+---
+def readJSON(request):
+    if the body is empty:
+        return every field empty
+    if the body is not JSON, or is over 1 MB:
+        raise 400 BadBody
+    return the body
+
+=== web.writeError
+kind: def
+src: web/respond.go :: func writeError(
+doc: Turns a named error into its HTTP status and message. Anything else is logged and answered with a plain 500, so internal detail never reaches the caller.
+---
+def writeError(error):
+    statuses = {
+        400: BadBody, MissingText, UnknownPriority,
+             UnknownPlan
+        401: BadCredentials, NotSignedIn
+        403: AgentInactive, NotAllowed, PriorityNotAllowed
+        404: TicketNotFound, CustomerNotFound, AgentNotFound
+        409: StatusChange, TicketClosed, ReopenWindowPassed,
+             AlreadyEscalated, LastLead
+        422: AssigneeNotInTeam
+    }
+    if error in statuses:
+        return its status, {"error": its message}
+    log error
+    return 500, {"error": "Something went wrong. Try again."}

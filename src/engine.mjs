@@ -232,6 +232,10 @@ function extract_routes({ rule, files, lines_of, statement_at }) {
   const required = [];
   for (const path of files(rule.files, rule.exclude ?? TEST_FILES)) {
     const lines = lines_of(path);
+    let module = module_of(path);
+    if (rule.module === "folder") {
+      module = folder_of(path);
+    }
     lines.forEach((line, index) => {
       if (!(rule.definition ?? ROUTE_DEFINITION).test(line)) {
         return;
@@ -246,6 +250,7 @@ function extract_routes({ rule, files, lines_of, statement_at }) {
           kind: "route",
           group: module_of(path),
           doc: short_doc(comment),
+          module,
           src,
         });
       }
@@ -358,6 +363,13 @@ export async function build_map(root, config, { config_root = root, only, strict
     }
   }
 
+  for (const symbol of found) {
+    const written_one = symbols.get(symbol.id);
+    if (written_one !== undefined && written_one !== symbol) {
+      written_one.module = symbol.module;
+    }
+  }
+
   const domains_path = join(root, config.domains);
   let domains = [];
   if (existsSync(domains_path)) {
@@ -440,12 +452,6 @@ export async function build_map(root, config, { config_root = root, only, strict
     }
   }
 
-  for (const symbol of found) {
-    const written_one = symbols.get(symbol.id);
-    if (written_one !== undefined && written_one !== symbol) {
-      written_one.module = symbol.module;
-    }
-  }
   const authored_ids = new Set(authored.map((symbol) => symbol.id));
   for (const symbol of symbols.values()) {
     symbol.authored = authored_ids.has(symbol.id);

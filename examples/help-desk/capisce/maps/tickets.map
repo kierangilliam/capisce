@@ -1,0 +1,500 @@
+=== GET /tickets
+kind: route
+group: Tickets
+domain: Tickets
+src: web/routes.go :: mux.HandleFunc("GET /tickets",
+also: web/ticket_handlers.go :: func (s *Server) listTickets(
+doc: Lists the tickets the caller may see, the most pressing first. `?status=` keeps one status.
+---
+route GET /tickets(status=None):
+    #> Check the session -> web.Server.signedIn | 401
+    actor = signedIn()
+    #> List what they may see -> tickets.Service.List
+    return 200, tickets.Service.List(actor, status)
+
+=== POST /tickets
+kind: route
+group: Tickets
+domain: Tickets
+src: web/routes.go :: mux.HandleFunc("POST /tickets",
+also: web/ticket_handlers.go :: func (s *Server) openTicket(
+doc: Opens a ticket. A customer opens their own; an agent opens one for a customer they name.
+---
+route POST /tickets(subject, body, topic, priority):
+    # an agent also sends customer_id
+    #> Check the session -> web.Server.signedIn | 401
+    actor = signedIn()
+    #> Read the body -> web.readJSON | 400 BadBody
+    input = readJSON(request)
+    #> Open the ticket -> tickets.Service.Open | 404 CustomerNotFound | 400 MissingText | 400 UnknownPriority | 403 PriorityNotAllowed
+    ticket = tickets.Service.Open(actor, input)
+    return 201, ticket
+
+=== GET /tickets/{id}
+kind: route
+group: Tickets
+domain: Tickets
+src: web/routes.go :: mux.HandleFunc("GET /tickets/{id}",
+also: web/ticket_handlers.go :: func (s *Server) showTicket(
+doc: Shows one ticket with its replies. Customers do not get internal notes.
+---
+route GET /tickets/{id}(id):
+    #> Check the session -> web.Server.signedIn | 401
+    actor = signedIn()
+    #> Get the ticket -> tickets.Service.Get | 404 TicketNotFound
+    return 200, tickets.Service.Get(actor, id)
+
+=== POST /tickets/{id}/replies
+kind: route
+group: Working on a ticket
+domain: Tickets
+src: web/routes.go :: mux.HandleFunc("POST /tickets/{id}/replies",
+also: web/ticket_handlers.go :: func (s *Server) replyToTicket(
+doc: Adds a reply to a ticket. An agent may mark it internal, which makes it a note only agents see.
+---
+route POST /tickets/{id}/replies(id, body, internal=False):
+    #> Check the session -> web.Server.signedIn | 401
+    actor = signedIn()
+    #> Read the body -> web.readJSON | 400 BadBody
+    body, internal = readJSON(request)
+    #> Add the reply -> tickets.Service.Reply | 404 TicketNotFound | 400 MissingText | 403 NotAllowed | 409 TicketClosed | 409 ReopenWindowPassed
+    ticket = tickets.Service.Reply(actor, id, body, internal)
+    return 200, ticket
+
+=== POST /tickets/{id}/assign
+kind: route
+group: Working on a ticket
+domain: Tickets
+src: web/routes.go :: mux.HandleFunc("POST /tickets/{id}/assign",
+also: web/ticket_handlers.go :: func (s *Server) assignTicket(
+doc: Gives a ticket to an agent. With no agent named, the caller takes it.
+---
+route POST /tickets/{id}/assign(id, agent_id=None):
+    #> Check the session -> web.Server.signedIn | 401
+    actor = signedIn()
+    #> Read the body -> web.readJSON | 400 BadBody
+    agent_id = readJSON(request)
+    #> Assign it -> tickets.Service.Assign | 404 TicketNotFound | 403 NotAllowed | 409 TicketClosed | 422 AssigneeNotInTeam
+    ticket = tickets.Service.Assign(actor, id, agent_id)
+    return 200, ticket
+
+=== PUT /tickets/{id}/priority
+kind: route
+group: Working on a ticket
+domain: Tickets
+src: web/routes.go :: mux.HandleFunc("PUT /tickets/{id}/priority",
+also: web/ticket_handlers.go :: func (s *Server) changePriority(
+doc: Changes how urgent a ticket is, which moves its deadline. Only agents on the ticket's team may.
+---
+route PUT /tickets/{id}/priority(id, priority):
+    #> Check the session -> web.Server.signedIn | 401
+    actor = signedIn()
+    #> Read the body -> web.readJSON | 400 BadBody
+    priority = readJSON(request)
+    #> Change it -> tickets.Service.ChangePriority | 404 TicketNotFound | 403 NotAllowed | 409 TicketClosed | 400 UnknownPriority
+    ticket = tickets.Service.ChangePriority(
+        actor, id, priority)
+    return 200, ticket
+
+=== POST /tickets/{id}/escalate
+kind: route
+group: Working on a ticket
+domain: Tickets
+src: web/routes.go :: mux.HandleFunc("POST /tickets/{id}/escalate",
+also: web/ticket_handlers.go :: func (s *Server) escalateTicket(
+doc: A lead marks a ticket as needing more attention. Its priority goes up one step and its deadline comes closer.
+---
+route POST /tickets/{id}/escalate(id, reason=None):
+    #> Check the session -> web.Server.signedIn | 401
+    actor = signedIn()
+    #> Read the body -> web.readJSON | 400 BadBody
+    reason = readJSON(request)
+    #> Escalate it -> tickets.Service.Escalate | 404 TicketNotFound | 403 NotAllowed | 409 TicketClosed | 409 AlreadyEscalated
+    ticket = tickets.Service.Escalate(actor, id, reason)
+    return 200, ticket
+
+=== POST /tickets/{id}/close
+kind: route
+group: Working on a ticket
+domain: Tickets
+src: web/routes.go :: mux.HandleFunc("POST /tickets/{id}/close",
+also: web/ticket_handlers.go :: func (s *Server) closeTicket(
+doc: Closes a ticket. Its customer or an agent on its team may close it.
+---
+route POST /tickets/{id}/close(id):
+    #> Check the session -> web.Server.signedIn | 401
+    actor = signedIn()
+    #> Close it -> tickets.Service.Close | 404 TicketNotFound | 409 StatusChange
+    return 200, tickets.Service.Close(actor, id)
+
+=== POST /tickets/{id}/reopen
+kind: route
+group: Working on a ticket
+domain: Tickets
+src: web/routes.go :: mux.HandleFunc("POST /tickets/{id}/reopen",
+also: web/ticket_handlers.go :: func (s *Server) reopenTicket(
+doc: Reopens a closed ticket and starts a new deadline.
+---
+route POST /tickets/{id}/reopen(id):
+    #> Check the session -> web.Server.signedIn | 401
+    actor = signedIn()
+    #> Reopen it -> tickets.Service.Reopen | 404 TicketNotFound | 409 StatusChange | 409 ReopenWindowPassed
+    return 200, tickets.Service.Reopen(actor, id)
+
+=== tickets.Service.find
+kind: def
+src: internal/tickets/tickets.go :: func (s *Service) find(
+doc: Finds a ticket the caller may see. Every action on a ticket starts here, so a ticket someone may not see looks to them like one that does not exist.
+---
+def find(actor, id):
+    ticket = tickets[id]
+    if none or not CanView(actor, ticket):
+        raise TicketNotFound
+    return ticket
+
+=== tickets.Service.Open
+kind: def
+src: internal/tickets/tickets.go :: func (s *Service) Open(
+doc: Starts a ticket for a customer, routes it to a team by its topic, starts its deadline and tells the team.
+---
+def Open(actor, input):
+    #> Work out who the ticket is for -> accounts.Directory.Customer | CustomerNotFound
+    customer_id = actor.CustomerID
+    if actor.IsAgent():
+        customer_id = input.customer_id
+    customer = accounts.Directory.Customer(customer_id)
+    #> A subject and a message are needed | MissingText
+    if subject or body is empty:
+        raise MissingText
+    #> Read the priority -> deadlines.ParsePriority | UnknownPriority
+    priority = ParsePriority(input.priority)
+    #> A customer's plan caps the priority -> deadlines.HighestFor | PriorityNotAllowed
+    highest = deadlines.HighestFor(customer.Plan)
+    if actor.IsCustomer() and priority is above highest:
+        raise PriorityNotAllowed
+    #> Route it to a team by topic -> accounts.Directory.TeamForTopic
+    team = accounts.Directory.TeamForTopic(input.topic)
+    #> Create the ticket, with the message as its first reply
+    ticket = Ticket(customer, team, priority, Status="new")
+    add Reply(body, by actor)
+    #> Start the deadline -> tickets.Service.startClock
+    startClock(ticket)
+    #> Tell the team -> tickets.Service.announceOpened
+    announceOpened(ticket, by=actor)
+    return visibleTo(actor, ticket)
+
+=== tickets.Service.Get
+kind: def
+src: internal/tickets/tickets.go :: func (s *Service) Get(
+doc: Returns one ticket with the replies the caller may read.
+---
+def Get(actor, id):
+    #> Find a ticket they may see -> tickets.Service.find | TicketNotFound
+    ticket = find(actor, id)
+    #> Leave out what they may not read -> tickets.visibleTo
+    return visibleTo(actor, ticket)
+
+=== tickets.Service.List
+kind: def
+src: internal/tickets/tickets.go :: func (s *Service) List(
+doc: Lists the tickets a person may see, optionally of one status. The ones with the nearest deadline come first.
+---
+def List(actor, status=None):
+    #> Keep the tickets they may see -> tickets.CanView
+    list = tickets where CanView(actor, ticket)
+        and (no status asked or ticket.Status == status)
+    #> Leave out what they may not read -> tickets.visibleTo
+    list = visibleTo(actor, each)
+    #> Most pressing first
+    sort list:
+        tickets with a deadline first, soonest DueAt on top
+        then the rest, newest OpenedAt first
+    return list
+
+=== tickets.Service.Reply
+kind: def
+src: internal/tickets/tickets.go :: func (s *Service) Reply(
+doc: Adds a message to a ticket. A customer's reply brings the ticket back to us, an agent's answer ends the customer's wait, and an agent's internal note changes nothing.
+---
+def Reply(actor, id, body, internal):
+    #> Find a ticket they may see -> tickets.Service.find | TicketNotFound
+    ticket = find(actor, id)
+    #> A message is needed | MissingText
+    if body is empty:
+        raise MissingText
+    #> A customer's reply brings the ticket back to us -> tickets.Service.customerReplies | NotAllowed | ReopenWindowPassed
+    if actor.IsCustomer():
+        customerReplies(ticket, internal)
+    #> An agent's answer ends the customer's wait -> tickets.Service.agentReplies | TicketClosed
+    elif not internal:
+        agentReplies(ticket, actor)
+    # an agent's internal note skips both, even when closed
+    #> Add the reply
+    add Reply(body, internal, by actor)
+    #> Tell the people concerned -> tickets.Service.announceReply
+    announceReply(ticket, by=actor, internal)
+    return visibleTo(actor, ticket)
+
+=== tickets.Service.customerReplies
+kind: def
+src: internal/tickets/tickets.go :: func (s *Service) customerReplies(
+doc: What a customer's reply does to the ticket. A ticket waiting on them comes back to us. A closed ticket reopens, but only within seven days of closing.
+---
+def customerReplies(ticket, internal):
+    #> Customers cannot write internal notes | NotAllowed
+    if internal:
+        raise NotAllowed
+    #> A closed ticket reopens within 7 days -> tickets.Service.move | ReopenWindowPassed
+    if ticket.Status == "closed":
+        if now - ticket.ClosedAt > 7 days:
+            raise ReopenWindowPassed
+        move(ticket, "open")   # a new deadline starts
+    #> A ticket waiting on them comes back to us -> tickets.Service.move
+    elif ticket.Status == "waiting":
+        move(ticket, "open")   # a new deadline starts
+    # "new" or "open": no change, the deadline keeps running
+
+=== tickets.Service.agentReplies
+kind: def
+src: internal/tickets/tickets.go :: func (s *Service) agentReplies(
+doc: What an agent's answer does to the ticket: the customer's wait ends, and an agent who answers a ticket nobody has takes it.
+---
+def agentReplies(ticket, actor):
+    #> A closed ticket must be reopened first | TicketClosed
+    if ticket.Status == "closed":
+        raise TicketClosed
+    #> Answering a ticket nobody has takes it
+    if ticket.AssignedAgentID is empty:
+        ticket.AssignedAgentID = actor.AgentID
+    #> Now we wait for the customer -> tickets.Service.move
+    if ticket.Status != "waiting":
+        move(ticket, "waiting")   # the deadline stops
+
+=== tickets.Service.ChangePriority
+kind: def
+src: internal/tickets/tickets.go :: func (s *Service) ChangePriority(
+doc: Sets how urgent a ticket is and works its deadline out again. Setting the priority it already has does nothing.
+---
+def ChangePriority(actor, id, text):
+    #> Find a ticket they may see -> tickets.Service.find | TicketNotFound
+    ticket = find(actor, id)
+    #> Only agents on its team -> tickets.CanWorkOn | NotAllowed
+    if not CanWorkOn(actor, ticket):
+        raise NotAllowed
+    #> Not on a closed ticket | TicketClosed
+    if ticket.Status == "closed":
+        raise TicketClosed
+    #> Read the priority -> deadlines.ParsePriority | UnknownPriority
+    priority = ParsePriority(text)
+    if priority == ticket.Priority:
+        return ticket   # nothing to do, nobody is told
+    #> Set it and move the deadline -> tickets.Service.retime
+    ticket.Priority = priority
+    retime(ticket)
+    #> Tell whoever has the ticket -> tickets.Service.announcePriority
+    announcePriority(ticket, by=actor)
+    return visibleTo(actor, ticket)
+
+=== tickets.Service.Close
+kind: def
+src: internal/tickets/tickets.go :: func (s *Service) Close(
+doc: Ends a ticket. Anyone who may see it may close it: its customer, or an agent on its team.
+---
+def Close(actor, id):
+    #> Find a ticket they may see -> tickets.Service.find | TicketNotFound
+    ticket = find(actor, id)
+    #> Close it, which ends the deadline -> tickets.Service.move | StatusChange
+    move(ticket, "closed")   # closed twice: refused
+    #> Tell the other side -> tickets.Service.announceClosed
+    announceClosed(ticket, by=actor)
+    return visibleTo(actor, ticket)
+
+=== tickets.Service.Reopen
+kind: def
+src: internal/tickets/tickets.go :: func (s *Service) Reopen(
+doc: Brings a closed ticket back to the team and starts a new deadline.
+---
+def Reopen(actor, id):
+    #> Find a ticket they may see -> tickets.Service.find | TicketNotFound
+    ticket = find(actor, id)
+    #> Only a closed ticket reopens | StatusChange
+    if ticket.Status != "closed":
+        raise StatusChange
+    #> Within 7 days, unless a lead -> tickets.CanReopen | ReopenWindowPassed
+    if not CanReopen(actor, ticket):
+        raise ReopenWindowPassed
+    #> Open it, which starts a new deadline -> tickets.Service.move
+    move(ticket, "open")
+    #> Tell the other side -> tickets.Service.announceReopened
+    announceReopened(ticket, by=actor)
+    return visibleTo(actor, ticket)
+
+=== tickets.canMove
+kind: def
+src: internal/tickets/status.go :: func canMove(
+doc: The status changes a ticket may make. Nothing goes back to new, and a closed ticket can only be opened again.
+---
+def canMove(from, to):
+    allowed = {
+        "new":     ["open", "waiting", "closed"]
+        "open":    ["waiting", "closed"]
+        "waiting": ["open", "closed"]
+        "closed":  ["open"]
+    }
+    return to in allowed[from]
+
+=== tickets.Service.move
+kind: def
+src: internal/tickets/status.go :: func (s *Service) move(
+doc: Changes a ticket's status and keeps its deadline in step. The customer's wait ends when we answer or the ticket closes, and starts again when a waiting or closed ticket comes back to us.
+---
+def move(ticket, to):
+    #> Check the change is allowed -> tickets.canMove | StatusChange
+    if not canMove(ticket.Status, to):
+        raise StatusChange
+    from = ticket.Status
+    ticket.Status = to
+    #> We answered: nothing is due -> tickets.stopClock
+    if to == "waiting":
+        stopClock(ticket)
+    #> Closed: nothing is due -> tickets.stopClock
+    if to == "closed":
+        stopClock(ticket)
+        ticket.ClosedAt = now
+    #> Back with us: a new deadline starts -> tickets.Service.startClock
+    if to == "open" and from != "new":
+        ticket.ClosedAt = None
+        startClock(ticket)
+    # "new" to "open": the first deadline keeps running
+
+=== tickets.Service.Assign
+kind: def
+src: internal/tickets/assignment.go :: func (s *Service) Assign(
+doc: Gives a ticket to an agent on its team. A new ticket becomes open when someone gets it; its deadline does not change.
+---
+def Assign(actor, id, toAgentID=None):
+    #> Find a ticket they may see -> tickets.Service.find | TicketNotFound
+    ticket = find(actor, id)
+    #> No agent named means the caller
+    toAgentID = toAgentID or actor.AgentID
+    #> Check they may assign it -> tickets.CanAssign | NotAllowed
+    if not CanAssign(actor, ticket, toAgentID):
+        raise NotAllowed
+    #> Not on a closed ticket | TicketClosed
+    if ticket.Status == "closed":
+        raise TicketClosed
+    #> The agent must be active and on the team -> accounts.Directory.Agent | AssigneeNotInTeam
+    assignee = accounts.Directory.Agent(toAgentID)
+    if none, or not assignee.Active,
+            or assignee.TeamID != ticket.TeamID:
+        raise AssigneeNotInTeam
+    if ticket.AssignedAgentID == toAgentID:
+        return ticket   # already theirs, nobody is told
+    #> Hand it over
+    previous = ticket.AssignedAgentID
+    ticket.AssignedAgentID = toAgentID
+    #> A new ticket becomes open -> tickets.Service.move
+    if ticket.Status == "new":
+        move(ticket, "open")
+    #> Tell the new and the previous agent -> tickets.Service.announceAssigned
+    announceAssigned(ticket, previous, by=actor)
+    return visibleTo(actor, ticket)
+
+=== tickets.Service.Escalate
+kind: def
+src: internal/tickets/escalation.go :: func (s *Service) Escalate(
+doc: A lead says a ticket needs more attention. A ticket is escalated once; the reason, if given, is kept as an internal note.
+---
+def Escalate(actor, id, reason=None):
+    #> Find a ticket they may see -> tickets.Service.find | TicketNotFound
+    ticket = find(actor, id)
+    #> Only a lead of its team -> tickets.CanEscalate | NotAllowed
+    if not CanEscalate(actor, ticket):
+        raise NotAllowed
+    #> Not closed, and not escalated before | TicketClosed | AlreadyEscalated
+    if ticket.Status == "closed":
+        raise TicketClosed
+    if ticket.Escalated:
+        raise AlreadyEscalated
+    #> Raise the priority, bring the deadline closer -> tickets.Service.escalate
+    escalate(ticket)
+    #> Keep the reason as an internal note
+    if reason:
+        add Reply("Escalated: " + reason, Internal, by actor)
+    #> Tell the assignee and the customer -> tickets.Service.announceEscalated
+    announceEscalated(ticket, by=actor)
+    return visibleTo(actor, ticket)
+
+=== tickets.Service.escalate
+kind: def
+src: internal/tickets/escalation.go :: func (s *Service) escalate(
+doc: Marks a ticket escalated and raises its priority one step, which brings its deadline closer. Used when a lead escalates and when a ticket passes its deadline.
+---
+def escalate(ticket):
+    ticket.Escalated = True
+    #> One step more urgent -> deadlines.Priority.Raised
+    ticket.Priority = ticket.Priority.Raised()
+    #> Work the deadline out again -> tickets.Service.retime
+    retime(ticket)
+
+=== Opening a ticket
+kind: flow
+domain: Tickets
+doc: What happens between a customer asking for help and a team knowing about it.
+---
+#> The customer writes in -> POST /tickets
+A signed-in customer sends a subject, a message, a topic and how urgent it is.
+An agent can open a ticket for a customer they name.
+#> The request is checked -> tickets.Service.Open
+A subject and a message are needed. A customer on the free plan may ask for high priority at most; other plans may ask for urgent. Agents may set any priority.
+#> A team gets the ticket -> accounts.Directory.TeamForTopic
+The topic decides which team handles it. A topic no team lists goes to the catch-all team.
+#> The deadline starts -> tickets.Service.startClock
+The ticket is new, with the message as its first reply. From this moment a reply is due within the time the priority and the customer's plan allow.
+#> The team hears about it -> tickets.Service.announceOpened
+The team's leads get a notice. If an agent opened the ticket, the customer gets one too.
+
+=== Answering a ticket
+kind: flow
+domain: Tickets
+doc: How a ticket goes back and forth between the team and the customer until it is closed.
+---
+#> An agent takes the ticket -> POST /tickets/{id}/assign
+An agent on the team takes a ticket nobody has, or a lead gives it to someone. A new ticket becomes open. The deadline keeps running.
+#> The agent answers -> POST /tickets/{id}/replies
+The answer ends the customer's wait: the ticket is now waiting and has no deadline. An agent who answers a ticket nobody has takes it. The customer gets a notice.
+#> Agents leave notes for each other -> tickets.Service.Reply
+An internal note is seen by agents only and changes nothing about the ticket.
+#> The customer writes back -> tickets.Service.customerReplies
+The ticket is open again and a new deadline starts from that moment. Whoever has the ticket gets a notice.
+#> Someone closes it -> POST /tickets/{id}/close
+The customer or an agent on the team closes the ticket. Nothing is due any more, and the other side is told.
+
+=== A customer replies to a closed ticket
+kind: flow
+domain: Tickets
+doc: What a late reply does, depending on how long ago the ticket closed.
+---
+#> The customer sends a reply -> POST /tickets/{id}/replies
+The customer writes on one of their own tickets that has been closed.
+#> Within seven days, the ticket reopens -> tickets.Service.customerReplies
+The ticket is open again, with the same assignee, and a new deadline starts.
+After seven days the reply is refused and the customer is asked to open a new ticket.
+#> The team is told -> tickets.Service.announceReply
+The assignee gets a notice of the new reply, or the team's leads if nobody has the ticket.
+#> A lead can still reopen an old ticket -> POST /tickets/{id}/reopen
+Reopening by hand follows the same seven days for customers and agents. A lead of the team may reopen at any time.
+
+=== Escalating a ticket
+kind: flow
+domain: Tickets
+doc: A lead decides a ticket needs more attention than it is getting.
+---
+#> A lead escalates -> POST /tickets/{id}/escalate
+Only a lead of the ticket's team may, on a ticket that is not closed and has not been escalated before. They can give a reason.
+#> The ticket becomes more urgent -> tickets.Service.escalate
+Its priority goes up one step; urgent stays urgent. If the customer is waiting, the deadline is worked out again from when their wait began, so it comes closer.
+#> The reason is kept -> tickets.Service.Escalate
+The reason is saved on the ticket as an internal note, which the customer does not see.
+#> People are told -> tickets.Service.announceEscalated
+The assignee gets a notice, and the customer is told their ticket is getting extra attention.

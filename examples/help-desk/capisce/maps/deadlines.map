@@ -1,0 +1,185 @@
+=== GET /reports/overdue
+kind: route
+group: Reports
+domain: Deadlines
+src: web/routes.go :: mux.HandleFunc("GET /reports/overdue",
+also: web/report_handlers.go :: func (s *Server) overdueReport(
+doc: Lists the tickets of the caller's team that are past their deadline right now, the longest overdue first.
+---
+route GET /reports/overdue():
+    #> Check the session -> web.Server.signedIn | 401
+    actor = signedIn()
+    #> List the late tickets -> tickets.Service.Overdue | 403 NotAllowed
+    return 200, tickets.Service.Overdue(actor)
+
+=== deadlines.Window
+kind: def
+src: internal/deadlines/deadlines.go :: func Window(
+doc: How long a customer may wait for a reply, from the ticket's priority and the customer's plan.
+---
+def Window(priority, plan):
+    #> The priority sets the base
+    window = {"urgent": 1 hour, "high": 4 hours,
+              "normal": 8 hours, "low": 24 hours}[priority]
+    #> Premium customers wait half as long
+    if plan == "premium":
+        return window / 2
+    #> Free customers wait twice as long, 8 hours at least
+    if plan == "free":
+        return max(window * 2, 8 hours)
+    return window
+
+=== deadlines.DueAt
+kind: def
+src: internal/deadlines/deadlines.go :: func DueAt(
+doc: When a reply is due for a customer who has been waiting since a given moment.
+---
+def DueAt(waitingSince, priority, plan):
+    return waitingSince + Window(priority, plan)
+
+=== deadlines.HighestFor
+kind: def
+src: internal/deadlines/deadlines.go :: func HighestFor(
+doc: The most urgent priority a customer may pick for their own ticket. Agents are not held to it.
+---
+def HighestFor(plan):
+    if plan == "free":
+        return "high"
+    return "urgent"
+
+=== deadlines.ParsePriority
+kind: def
+src: internal/deadlines/priority.go :: func ParsePriority(
+doc: Reads a priority someone typed. Leaving it empty means normal.
+---
+def ParsePriority(text):
+    text = text in lower case, without spaces around it
+    if text is empty:
+        return "normal"
+    if text in ["low", "normal", "high", "urgent"]:
+        return text
+    raise UnknownPriority
+
+=== deadlines.Priority.Raised
+kind: def
+src: internal/deadlines/priority.go :: func (p Priority) Raised(
+doc: The priority one step up: low, normal, high, urgent. Urgent stays urgent.
+---
+def Raised(priority):
+    if priority == "urgent":
+        return "urgent"
+    return the next of "low", "normal", "high", "urgent"
+
+=== tickets.Service.startClock
+kind: def
+src: internal/tickets/clock.go :: func (s *Service) startClock(
+doc: Begins a customer's wait and sets when our reply is due.
+---
+def startClock(ticket):
+    plan = the plan of ticket's Customer   # unknown: "free"
+    ticket.WaitingSince = now
+    #> Work out when a reply is due -> deadlines.DueAt
+    ticket.DueAt = deadlines.DueAt(now, ticket.Priority, plan)
+    ticket.Overdue = False
+
+=== tickets.stopClock
+kind: def
+src: internal/tickets/clock.go :: func stopClock(
+doc: Ends the customer's wait. We owe no reply, so the ticket has no deadline and is not overdue.
+---
+def stopClock(ticket):
+    ticket.WaitingSince = None
+    ticket.DueAt = None
+    ticket.Overdue = False
+
+=== tickets.Service.retime
+kind: def
+src: internal/tickets/clock.go :: func (s *Service) retime(
+doc: Works a ticket's deadline out again after its priority or the customer's plan changed. The wait still counts from when it began.
+---
+def retime(ticket):
+    #> Nothing to do when no reply is due
+    if ticket.DueAt is None:
+        return
+    #> Same start, new length -> deadlines.DueAt
+    plan = the plan of ticket's Customer
+    ticket.DueAt = deadlines.DueAt(
+        ticket.WaitingSince, ticket.Priority, plan)
+    #> A later deadline can clear overdue
+    if now < ticket.DueAt:
+        ticket.Overdue = False
+
+=== tickets.Service.RetimeForCustomer
+kind: def
+src: internal/tickets/clock.go :: func (s *Service) RetimeForCustomer(
+doc: After a customer's plan changed, works out the deadlines of the tickets they are waiting on again. It says how many deadlines moved.
+---
+def RetimeForCustomer(customerID):
+    changed = 0
+    for ticket of customerID with a deadline:
+        #> Work the deadline out again -> tickets.Service.retime
+        retime(ticket)
+        if ticket.DueAt moved:
+            changed += 1
+    return changed
+
+=== tickets.Service.MarkOverdue
+kind: def
+src: internal/tickets/clock.go :: func (s *Service) MarkOverdue(
+doc: Finds the tickets whose deadline passed since the last look. Each is marked overdue once, escalated if it was not already, and its team is told. The app runs it every minute.
+---
+def MarkOverdue():
+    marked = []
+    #> Find tickets newly past their deadline
+    for ticket with a deadline, not yet Overdue,
+            where now >= ticket.DueAt:
+        ticket.Overdue = True
+        #> Escalate it, once -> tickets.Service.escalate
+        if not ticket.Escalated:
+            escalate(ticket)
+        #> Tell the leads and the assignee -> tickets.Service.announceOverdue
+        announceOverdue(ticket)
+        marked.append(ticket.ID)
+    return marked sorted
+
+=== tickets.Service.Overdue
+kind: def
+src: internal/tickets/clock.go :: func (s *Service) Overdue(
+doc: The report of late tickets for an agent's team. It compares each deadline with the time now, so it is right even between two runs of the every-minute check.
+---
+def Overdue(actor):
+    #> Agents only | NotAllowed
+    if not actor.IsAgent():
+        raise NotAllowed
+    #> Their team's tickets past the deadline -> tickets.CanWorkOn
+    late = tickets where CanWorkOn(actor, ticket)
+        and ticket has a deadline and now >= ticket.DueAt
+    #> Longest overdue first
+    return late sorted by DueAt, earliest first
+
+=== deadlines.Watch
+kind: def
+src: internal/deadlines/watch.go :: func Watch(
+doc: Runs a check again and again at a fixed pace until the app stops. The app uses it to look for overdue tickets every minute.
+---
+def Watch(every, sweep):
+    every `every`, until the app stops:
+        sweep(now)
+
+=== A ticket passes its deadline
+kind: flow
+domain: Deadlines
+doc: What the system does on its own when a customer has waited too long.
+---
+#> A deadline is running -> tickets.Service.startClock
+While a customer waits for us, their ticket has a deadline. It is set when the ticket is opened, and again each time the customer writes back or the ticket is reopened.
+#> Every minute, the app looks for late tickets -> deadlines.Watch
+A background check runs once a minute for as long as the app is up.
+#> A late ticket is marked overdue -> tickets.Service.MarkOverdue
+A ticket whose deadline has passed is marked overdue. This happens once per wait: the ticket is not picked up again on the next check.
+#> It is escalated -> tickets.Service.escalate
+Unless it was escalated before, the ticket is escalated and its priority goes up one step.
+#> The team is told, the customer is not -> tickets.Service.announceOverdue
+The team's leads and the assignee get a notice.
+#> It shows on the report -> GET /reports/overdue
+Agents see their team's late tickets, the longest overdue first, until someone answers or closes them.

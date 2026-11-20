@@ -64,13 +64,13 @@ A `#>` line starts a stage. Stages are the steps a reader follows: they label th
 ```
 
 - The title is a short phrase a non-engineer can follow, like "Find the order" or "Tell the customer".
-- `-> id` names the function or endpoint the stage is about, so a reader can open it and the trace can follow the call. Use the full id for another file's function.
+- `-> id` names the function or endpoint the stage is about, so a reader can open it and the trace can follow the call. Use the full id for a function in another module.
 - Each `| text` is a way the stage ends early: `| 404`, `| 409 AlreadyRefunded`, `| None not theirs`.
 - Anything with more than two or three lines of behavior has stages. A one-line function needs none.
 
 ## Names in pseudo-code
 
-A name that matches an id becomes a link, so write calls into other files in full: `payment_service.refund(order, amount)`. A call inside the same file can use the bare name. A model's name links to its model. Names several map files need live in `shared.map`: use them, do not define them again. `[[POST /api/orders/:id/refund]]` links an endpoint or flow from a comment.
+A name that matches an id becomes a link, so write calls into other files in full: `payment_service.refund(order, amount)`. A call inside the same module (the same file, or the same folder where the project names things by folder) can use the bare name, as long as only one mapped function has that name; write the full id when in doubt. A model's name links to its model. Names several map files need live in `shared.map`: use them, do not define them again. `[[POST /api/orders/:id/refund]]` links an endpoint or flow from a comment.
 
 ## What to map
 

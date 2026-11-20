@@ -1,0 +1,168 @@
+=== GET /notices
+kind: route
+group: Notices
+domain: Notifications
+src: web/routes.go :: mux.HandleFunc("GET /notices",
+also: web/report_handlers.go :: func (s *Server) listNotices(
+doc: Lists the caller's own notices, newest first, read or not.
+---
+route GET /notices():
+    #> Check the session -> web.Server.signedIn | 401
+    actor = signedIn()
+    #> List their notices -> notify.Outbox.For
+    return 200, notify.Outbox.For(actor)
+
+=== POST /notices/read
+kind: route
+group: Notices
+domain: Notifications
+src: web/routes.go :: mux.HandleFunc("POST /notices/read",
+also: web/report_handlers.go :: func (s *Server) markNoticesRead(
+doc: Marks all of the caller's notices as read, and says how many were unread.
+---
+route POST /notices/read():
+    #> Check the session -> web.Server.signedIn | 401
+    actor = signedIn()
+    #> Mark them all read -> notify.Outbox.MarkAllRead
+    marked = notify.Outbox.MarkAllRead(actor)
+    return 200, {marked_read: marked}
+
+=== notify.Outbox.Send
+kind: def
+src: internal/notify/outbox.go :: func (o *Outbox) Send(
+doc: Leaves a notice for one person about a ticket. It is skipped when they already have an unread notice of the same kind about that ticket, so a busy ticket does not flood anyone.
+---
+def Send(to, kind, ticketID, text):
+    #> Nobody to tell
+    if to is empty:
+        return False
+    #> Skip a repeat of an unread notice
+    if to has an unread Notice of this kind for ticketID:
+        return False
+    #> Leave the notice
+    add Notice(to, kind, ticketID, text, SentAt=now)
+    return True
+
+=== notify.Outbox.MarkAllRead
+kind: def
+src: internal/notify/outbox.go :: func (o *Outbox) MarkAllRead(
+doc: Marks every notice of one person as read. After that, new notices about the same things get through again.
+---
+def MarkAllRead(to):
+    marked = 0
+    for notice of `to` where not Read:
+        notice.Read = True
+        marked += 1
+    return marked
+
+=== tickets.Service.tellOwners
+kind: def
+src: internal/tickets/announce.go :: func (s *Service) tellOwners(
+doc: Tells the people responsible for a ticket: its assignee, or the team's active leads while nobody has it.
+---
+def tellOwners(ticket, kind, text, by):
+    #> The assignee, when there is one -> tickets.Service.tellAgent
+    if ticket.AssignedAgentID:
+        tellAgent(ticket.AssignedAgentID,
+                  ticket, kind, text, by)
+        return
+    #> Otherwise the team's active leads -> tickets.Service.tellLeads
+    tellLeads(ticket, kind, text, by)
+
+=== tickets.Service.tellLeads
+kind: def
+src: internal/tickets/announce.go :: func (s *Service) tellLeads(
+doc: Tells every active lead of the ticket's team, except the one who caused the news.
+---
+def tellLeads(ticket, kind, text, by):
+    for lead in accounts.Directory.LeadsOf(ticket.TeamID):
+        tellAgent(lead.ID, ticket, kind, text, by)
+
+=== tickets.Service.tellAgent
+kind: def
+src: internal/tickets/announce.go :: func (s *Service) tellAgent(
+doc: Leaves a notice for one agent, unless they are the one who caused the news.
+---
+def tellAgent(agentID, ticket, kind, text, by):
+    if agentID is empty or agentID == by.AgentID:
+        return
+    notify.Outbox.Send(to agent, kind, ticket.ID, text)
+
+=== tickets.Service.tellOtherSide
+kind: def
+src: internal/tickets/announce.go :: func (s *Service) tellOtherSide(
+doc: Passes news across: what a customer did goes to the ticket's owners, and what an agent did goes to the customer.
+---
+def tellOtherSide(ticket, kind, text, by):
+    #> A customer's news goes to the owners -> tickets.Service.tellOwners
+    if by.IsCustomer():
+        tellOwners(ticket, kind, text, by)
+        return
+    #> An agent's news goes to the customer -> notify.Outbox.Send
+    notify.Outbox.Send(to customer, kind, ticket.ID, text)
+
+=== tickets.Service.announceOpened
+kind: def
+src: internal/tickets/announce.go :: func (s *Service) announceOpened(
+doc: Who hears about a new ticket: the team's leads, and the customer when an agent opened it for them.
+---
+def announceOpened(ticket, by):
+    #> Tell the team's leads -> tickets.Service.tellLeads
+    tellLeads(ticket, "ticket_opened",
+              "New ticket <id>: <subject>", by)
+    #> Tell the customer when an agent opened it -> notify.Outbox.Send
+    if by.IsAgent():
+        notify.Outbox.Send(to customer, "ticket_opened",
+                    ticket.ID, "We opened <id> for you")
+
+=== tickets.Service.announceReply
+kind: def
+src: internal/tickets/announce.go :: func (s *Service) announceReply(
+doc: Who hears about a reply. An internal note goes to the ticket's owners only. Any other reply goes to the other side.
+---
+def announceReply(ticket, by, internal):
+    #> A note stays among agents -> tickets.Service.tellOwners
+    if internal:
+        tellOwners(ticket, "internal_note", "New note", by)
+        return
+    #> A reply goes to the other side -> tickets.Service.tellOtherSide
+    tellOtherSide(ticket, "new_reply", "New reply", by)
+
+=== tickets.Service.announceAssigned
+kind: def
+src: internal/tickets/announce.go :: func (s *Service) announceAssigned(
+doc: Who hears that a ticket changed hands: the agent who got it and the agent who had it, but not the one who made the change.
+---
+def announceAssigned(ticket, previousAgentID, by):
+    #> Tell the new assignee -> tickets.Service.tellAgent
+    tellAgent(ticket.AssignedAgentID, ticket,
+              "ticket_assigned", "Ticket is now yours", by)
+    #> Tell the agent who had it -> tickets.Service.tellAgent
+    tellAgent(previousAgentID, ticket,
+              "ticket_released", "Went to someone else", by)
+
+=== tickets.Service.announceEscalated
+kind: def
+src: internal/tickets/announce.go :: func (s *Service) announceEscalated(
+doc: Who hears that a lead escalated a ticket: its assignee and the customer.
+---
+def announceEscalated(ticket, by):
+    #> Tell the assignee -> tickets.Service.tellAgent
+    tellAgent(ticket.AssignedAgentID, ticket,
+              "ticket_escalated", "Ticket was escalated", by)
+    #> Tell the customer -> notify.Outbox.Send
+    notify.Outbox.Send(to customer, "ticket_escalated",
+                ticket.ID, "Getting extra attention")
+
+=== tickets.Service.announceOverdue
+kind: def
+src: internal/tickets/announce.go :: func (s *Service) announceOverdue(
+doc: Who hears that a ticket passed its deadline: the team's active leads and the assignee. The customer is never told.
+---
+def announceOverdue(ticket):
+    text = "Ticket <id> is past its deadline"
+    #> Tell the team's leads -> tickets.Service.tellLeads
+    tellLeads(ticket, "ticket_overdue", text)
+    #> Tell the assignee -> tickets.Service.tellAgent
+    tellAgent(ticket.AssignedAgentID, ticket,
+              "ticket_overdue", text)

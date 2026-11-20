@@ -1,0 +1,60 @@
+=== GET /customers
+kind: route
+group: Customers
+domain: Customers
+src: web/routes.go :: mux.HandleFunc("GET /customers",
+also: web/account_handlers.go :: func (s *Server) listCustomers(
+doc: Lists every customer with their plan. Only agents may see the list.
+---
+route GET /customers():
+    #> Check the session -> web.Server.signedIn | 401
+    actor = signedIn()
+    #> List the customers -> accounts.Directory.Customers | 403 NotAllowed
+    return 200, accounts.Directory.Customers(actor)
+
+=== PUT /customers/{id}/plan
+kind: route
+group: Customers
+domain: Customers
+src: web/routes.go :: mux.HandleFunc("PUT /customers/{id}/plan",
+also: web/account_handlers.go :: func (s *Server) changePlan(
+doc: A lead moves a customer to another plan. The deadlines of the tickets that customer is waiting on move with it.
+---
+route PUT /customers/{id}/plan(id, plan):
+    #> Check the session -> web.Server.signedIn | 401
+    actor = signedIn()
+    #> Read the body -> web.readJSON | 400 BadBody
+    plan = readJSON(request)
+    #> Change the plan -> accounts.Directory.ChangePlan | 403 NotAllowed | 400 UnknownPlan | 404 CustomerNotFound
+    customer = accounts.Directory.ChangePlan(actor, id, plan)
+    #> Move the deadlines of their waiting tickets -> tickets.Service.RetimeForCustomer
+    retimed = tickets.Service.RetimeForCustomer(customer.ID)
+    return 200, {customer, tickets_retimed: retimed}
+
+=== accounts.Directory.Customers
+kind: def
+src: internal/accounts/customers.go :: func (d *Directory) Customers(
+doc: Lists every customer, by name. Agents of any team see all customers.
+---
+def Customers(actor):
+    if not actor.IsAgent():
+        raise NotAllowed
+    return every Customer, sorted by Name
+
+=== accounts.Directory.ChangePlan
+kind: def
+src: internal/accounts/customers.go :: func (d *Directory) ChangePlan(
+doc: Moves a customer to another plan. Any lead may do it, whichever team they lead.
+---
+def ChangePlan(actor, id, plan):
+    #> Only a lead | NotAllowed
+    if not actor.Lead:
+        raise NotAllowed
+    #> The plan must be one we sell | UnknownPlan
+    if plan not in ["free", "standard", "premium"]:
+        raise UnknownPlan
+    #> Find the customer | CustomerNotFound
+    customer = customers[id]
+    if none: raise CustomerNotFound
+    customer.Plan = plan
+    return customer

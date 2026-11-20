@@ -1,0 +1,141 @@
+=== POST /sign-in
+kind: route
+group: Signing in
+domain: Access
+src: web/routes.go :: mux.HandleFunc("POST /sign-in",
+also: web/session_handlers.go :: func (s *Server) signIn(
+doc: Signs a customer or an agent in with their email and password, and starts a session that lasts twelve hours.
+---
+route POST /sign-in(email, password):
+    #> Read the body -> web.readJSON | 400 BadBody
+    email, password = readJSON(request)
+    #> Check who it is -> accounts.Directory.SignIn | 401 BadCredentials | 403 AgentInactive
+    session = accounts.Directory.SignIn(email, password)
+    #> Remember the session in a cookie
+    set cookie "helpdesk_session" = session.Token
+        until session.ExpiresAt, hidden from scripts
+    return 200, session
+
+=== POST /sign-out
+kind: route
+group: Signing in
+domain: Access
+src: web/routes.go :: mux.HandleFunc("POST /sign-out",
+also: web/session_handlers.go :: func (s *Server) signOut(
+doc: Ends the caller's session. It never fails: signing out twice, or without a session, is fine.
+---
+route POST /sign-out():
+    #> End the session -> accounts.Directory.SignOut
+    # an unknown token is ignored
+    accounts.Directory.SignOut(session token)
+    #> Clear the cookie
+    clear cookie "helpdesk_session"
+    return 204
+
+=== accounts.Directory.SignIn
+kind: def
+src: internal/accounts/sessions.go :: func (d *Directory) SignIn(
+doc: Checks an email and password against the agents, then the customers, and starts a twelve-hour session for whoever matches. An email both an agent and a customer use signs in as the agent.
+---
+def SignIn(email, password):
+    email = email in lower case, without spaces around it
+    #> Look for an agent with this email | BadCredentials | AgentInactive
+    if an agent has this email:
+        if password is wrong: raise BadCredentials
+        if not agent.Active: raise AgentInactive
+        return new Session(AgentID=agent.ID, 12 hours)
+    #> Otherwise look for a customer | BadCredentials
+    if a customer has this email and password:
+        return new Session(CustomerID=customer.ID, 12 hours)
+    raise BadCredentials   # unknown email reads the same
+
+=== accounts.Directory.Authenticate
+kind: def
+src: internal/accounts/sessions.go :: func (d *Directory) Authenticate(
+doc: Turns a session token into the person it belongs to. An agent's team and lead role are read fresh each time, so a change applies on their next request.
+---
+def Authenticate(token):
+    #> Find the session | NotSignedIn
+    session = sessions[token]
+    if none: raise NotSignedIn
+    #> An expired session is thrown away | NotSignedIn
+    if now >= session.ExpiresAt:
+        forget session
+        raise NotSignedIn
+    #> A customer is known by their id alone
+    if session.CustomerID:
+        return actor(CustomerID)
+    #> An agent is read fresh | NotSignedIn
+    agent = agents[session.AgentID]
+    if not agent.Active:
+        forget session
+        raise NotSignedIn
+    return actor(AgentID, agent.TeamID, agent.Lead)
+
+=== tickets.CanView
+kind: def
+src: internal/tickets/permissions.go :: func CanView(
+doc: Who may see a ticket: the customer it belongs to, and the agents on its team.
+---
+def CanView(actor, ticket):
+    if actor.IsCustomer():
+        return ticket.CustomerID == actor.CustomerID
+    return CanWorkOn(actor, ticket)
+
+=== tickets.CanWorkOn
+kind: def
+src: internal/tickets/permissions.go :: func CanWorkOn(
+doc: Who may work on a ticket: agents on the ticket's team, and nobody else.
+---
+def CanWorkOn(actor, ticket):
+    return actor.IsAgent() and actor.TeamID == ticket.TeamID
+
+=== tickets.CanAssign
+kind: def
+src: internal/tickets/permissions.go :: func CanAssign(
+doc: Who may give a ticket to an agent. A lead may give their team's ticket to anyone. Other agents may only take a ticket nobody has.
+---
+def CanAssign(actor, ticket, toAgentID):
+    #> Only the ticket's team -> tickets.CanWorkOn
+    if not CanWorkOn(actor, ticket):
+        return False
+    #> A lead may assign and reassign
+    if actor.Lead:
+        return True
+    #> Others may only take a free ticket themselves
+    return ticket.AssignedAgentID is empty
+        and toAgentID == actor.AgentID
+
+=== tickets.CanEscalate
+kind: def
+src: internal/tickets/permissions.go :: func CanEscalate(
+doc: Only a lead of the ticket's team may escalate it.
+---
+def CanEscalate(actor, ticket):
+    return actor.Lead and CanWorkOn(actor, ticket)
+
+=== tickets.CanReopen
+kind: def
+src: internal/tickets/permissions.go :: func CanReopen(
+doc: Who may reopen a closed ticket. Anyone who sees it may, for seven days after it closed. A lead of its team may at any time.
+---
+def CanReopen(actor, ticket):
+    #> They must be able to see it -> tickets.CanView
+    if not CanView(actor, ticket):
+        return False
+    #> A lead is not held to the window
+    if actor.Lead:
+        return True
+    #> Everyone else has 7 days
+    return now - ticket.ClosedAt <= 7 days
+
+=== tickets.visibleTo
+kind: def
+src: internal/tickets/permissions.go :: func visibleTo(
+doc: The copy of a ticket one person gets back. Customers do not get the internal notes agents wrote.
+---
+def visibleTo(actor, ticket):
+    copy = ticket
+    if not actor.IsAgent():
+        copy.Replies = replies where not Internal
+    return copy

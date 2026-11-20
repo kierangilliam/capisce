@@ -41,19 +41,15 @@ curl -b jar localhost:8080/tickets
 Run these from this folder. Build the capisce page once first: `pnpm install && pnpm build` in the root of the capisce repo.
 
 ```sh
-node ../../bin/capisce.mjs build capisce.html   # build the page, then open capisce.html
+node ../../bin/capisce.mjs build                # build the page into .capisce/index.html
+node ../../bin/capisce.mjs serve --port 8094    # build it, then serve it at http://127.0.0.1:8094 with comments and notes
 node ../../bin/capisce.mjs check                # fails when mapped code changed
 node ../../bin/capisce.mjs stamp                # after you reviewed the map
 ```
 
-`make map`, `make map-check` and `make map-stamp` do the same.
+`make map`, `make map-serve`, `make map-check` and `make map-stamp` do the same.
 
-To review with comments and notes, copy the page into a folder as `index.html` and serve it:
-
-```sh
-mkdir -p /tmp/help_desk_map && cp capisce.html /tmp/help_desk_map/index.html
-node ../../bin/capisce.mjs serve /tmp/help_desk_map --port 8094
-```
+The page, and the comments and notes left on it, are kept in `.capisce/`. This example ignores that whole folder in git. `node ../../bin/capisce.mjs comments` prints the comments that wait on a reply.
 
 ## How the map reads the Go code
 

@@ -14,7 +14,7 @@
   }
 </script>
 
-<aside class="browse">
+<aside class="browse_list">
   {#if domain === undefined}
     <div class="group_title">Domains</div>
     {#each catalog.data.domains as each}

@@ -13,6 +13,8 @@ Run capisce the way the project wraps it (look for a script that calls it), or a
 - `capisce stamp` records that you reviewed the map against the code. Run it last, once the map says what the code does.
 - `capisce build <out.html> --only <map file name>` builds from one map file and `shared.map` only. It fails on a `src:` line that matches nothing and on a step that points at something that is not there.
 - `capisce build <out.html> --base <git ref>` builds the page with what changed since that commit.
+- `capisce build` with no file writes the page to `.capisce/index.html`, and `capisce serve` builds it there and serves it with comments and notes.
+- `capisce comments` prints what readers left on the page that waits on a reply. The address-comments skill (`capisce skill address-comments`) says how to answer.
 
 ## When the check fails
 

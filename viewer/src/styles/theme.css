@@ -18,6 +18,10 @@
   --cp_sans: var(--font-sans, system-ui, -apple-system, "Segoe UI", sans-serif);
   --cp_radius: 4px;
   --cp_pane_width: 300px;
+  --cp_sheet_ink: #2f5d9b;
+  --cp_sheet: color-mix(in srgb, var(--cp_sheet_ink) 5%, var(--cp_background));
+  --cp_sheet_line: color-mix(in srgb, var(--cp_sheet_ink) 7%, transparent);
+  --cp_sheet_line_strong: color-mix(in srgb, var(--cp_sheet_ink) 12%, transparent);
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {

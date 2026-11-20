@@ -3,7 +3,7 @@
   import BrowseList from "./components/browse_list.svelte";
   import CanvasPage from "./components/canvas_page.svelte";
   import ChangesPage from "./components/changes_page.svelte";
-  import CommentsPane from "./components/comments_pane.svelte";
+  import CommentsSheet from "./components/comments_sheet.svelte";
   import DomainPage from "./components/domain_page.svelte";
   import DraftNote from "./components/draft_note.svelte";
   import NotesPane from "./components/notes_pane.svelte";
@@ -14,7 +14,7 @@
   import TracePanel from "./components/trace_panel.svelte";
   import { CANVAS_PAGE, CHANGES_PAGE, catalog, domain_of_page, symbol_of } from "./map/catalog";
   import { steps_of } from "./map/steps";
-  import { cancel_draft, comments, load_comments, save_draft } from "./state/comments.svelte";
+  import { cancel_draft, comments, keep_comments_fresh, load_comments, save_draft, unread_count } from "./state/comments.svelte";
   import { current, go, shown_code } from "./state/navigation.svelte";
   import { load_notes, notes, save_note } from "./state/notes.svelte";
   import { close_overlays, overlays } from "./state/overlays.svelte";
@@ -30,6 +30,7 @@
   const real_code_symbol = $derived(symbol_of(overlays.real_code_of));
 
   void load_comments();
+  keep_comments_fresh();
   void load_notes();
   if (catalog.changes !== undefined) {
     void go(CHANGES_PAGE);
@@ -55,7 +56,7 @@
     if (typing && event.key === "Enter" && (event.metaKey || event.ctrlKey)) {
       if (target.closest("[data-note-input]") !== null) {
         void save_note();
-      } else {
+      } else if (target.closest("[data-draft-input]") !== null) {
         void save_draft();
       }
     } else if (event.key === "Escape" && comments.draft !== undefined) {
@@ -83,12 +84,18 @@
   role="presentation"
   onclickcapture={close_what_was_clicked_away}
 >
-  <TopBar />
+  <div class="bar_host" data-panel="bar">
+    <TopBar />
+    {#if comments.on}<AnnotationLayer panel="bar" />{/if}
+  </div>
   {#if !has_data}
     <p class="empty_page">This page has no map yet. Run <code>capisce build</code> to fill it.</p>
   {:else}
     <div class="panels">
-      <BrowseList />
+      <div class="browse" data-panel="browse">
+        <BrowseList />
+        {#if comments.on}<AnnotationLayer panel="browse" />{/if}
+      </div>
       {#if has_trace && symbol !== undefined}
         <section class="trace_panel" data-panel="flow">
           <TracePanel {symbol} {entry} />
@@ -107,9 +114,15 @@
         {/if}
         {#if comments.on}<AnnotationLayer panel="code" />{/if}
       </section>
-      {#if comments.on}<CommentsPane />{/if}
       {#if notes.on}<NotesPane />{/if}
     </div>
+  {/if}
+  {#if comments.on}
+    <CommentsSheet />
+  {:else if comments.available && !notes.on && unread_count() > 0}
+    <button class="unread_notice" data-unread-notice onclick={() => set_commenting(true)}>
+      {unread_count()} new {unread_count() === 1 ? "reply" : "replies"} to your comments
+    </button>
   {/if}
   {#if overlays.tooltip !== undefined}<Tooltip tooltip={overlays.tooltip} />{/if}
   {#if comments.on && comments.draft !== undefined}<DraftNote draft={comments.draft} />{/if}

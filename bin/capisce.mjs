@@ -3,14 +3,19 @@
 //   with --json and no out.html, only the data is written
 // capisce check                                                                    fail when the map needs a review
 // capisce stamp                                                                    record that the map was reviewed
-// capisce serve <folder> [--port <n>]                                              serve a built page with comments
+// capisce serve [--port <n>] [--base <git ref>]                                    build the page, then serve it with comments
+// capisce comments [--all]                                                         print the comments waiting on a reply
+// capisce reply <comment id> <text> [--done]                                       answer a comment in its thread
 // capisce skill <name>                                                             print a skill
 // Every command reads capisce.config.mjs from --root <folder>, or from the current folder.
+// The built page, comments and notes live in the state folder: .capisce in the root, or --state <folder>,
+// or CAPISCE_STATE.
 import { execFileSync, spawn } from "node:child_process";
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { add_reply, awaits_reply, comment_text, read_comments } from "../src/comments.mjs";
 import { build_map, load_config } from "../src/engine.mjs";
 import { mark_changes, review_needed, stamped } from "../src/review.mjs";
 
@@ -32,7 +37,17 @@ const base_ref = option("--base");
 const only = option("--only");
 const json_path = option("--json");
 const port = option("--port");
-const [command, target] = args;
+const state = resolve(option("--state") ?? process.env.CAPISCE_STATE ?? join(root, ".capisce"));
+function flag(name) {
+  const at = args.indexOf(name);
+  if (at !== -1) {
+    args.splice(at, 1);
+  }
+  return at !== -1;
+}
+const all = flag("--all");
+const done = flag("--done");
+const [command, target, ...rest] = args;
 
 /** The map as it was at `ref`, read with today's config. */
 async function map_at(ref, config) {
@@ -67,17 +82,34 @@ async function run() {
   if (command === "skill") {
     const path = join(home, "skills", target ?? "", "SKILL.md");
     if (!existsSync(path)) {
-      throw new Error(`No skill named "${target}". The skills are: build-map, maintain.`);
+      throw new Error(`No skill named "${target}". The skills are: build-map, maintain, address-comments.`);
     }
     console.log(readFileSync(path, "utf8"));
     return;
   }
-  if (command === "serve") {
-    const server = spawn(process.execPath, [join(home, "src", "server.mjs"), resolve(target ?? ".")], {
-      stdio: "inherit",
-      env: { ...process.env, PORT: port ?? process.env.PORT ?? "8094" },
-    });
-    server.on("exit", (code) => process.exit(code ?? 0));
+  if (command === "comments") {
+    const comments = read_comments(state).filter((comment) => all || awaits_reply(comment));
+    if (comments.length === 0) {
+      console.log("No comments are waiting on a reply.");
+      return;
+    }
+    console.log(comments.map((comment) => comment_text(state, comment)).join("\n\n"));
+    return;
+  }
+  if (command === "reply") {
+    const text = rest.join(" ").trim();
+    if (target === undefined || text === "") {
+      throw new Error('Use: capisce reply <comment id> "<text>" [--done]');
+    }
+    let status;
+    if (done) {
+      status = "done";
+    }
+    const comment = add_reply(state, target, { author: "agent", text, status });
+    if (comment === undefined) {
+      throw new Error(`No comment has the id "${target}". Run "capisce comments --all" to list them.`);
+    }
+    console.log(`Replied to ${comment.id} (${comment.status}).`);
     return;
   }
 
@@ -97,9 +129,12 @@ async function run() {
     console.log("The map is up to date.");
     return;
   }
-  if (command !== "build") {
-    throw new Error("Use: capisce build | check | stamp | serve | skill. See the top of bin/capisce.mjs.");
+  if (command !== "build" && command !== "serve") {
+    throw new Error(
+      "Use: capisce build | check | stamp | serve | comments | reply | skill. See the top of bin/capisce.mjs.",
+    );
   }
+  const serving = command === "serve";
 
   let changes;
   if (base_ref !== undefined) {
@@ -124,10 +159,20 @@ async function run() {
   if (!existsSync(VIEWER)) {
     throw new Error(`The page has not been built yet. Run "pnpm install && pnpm build" in ${home}, then try again.`);
   }
-  const out_path = resolve(target ?? join(root, "capisce.html"));
+  let out_path = resolve(target ?? join(state, "index.html"));
+  if (serving) {
+    out_path = join(state, "index.html");
+  }
   mkdirSync(dirname(out_path), { recursive: true });
   writeFileSync(out_path, readFileSync(VIEWER, "utf8").replace(DATA_SLOT, () => data.replace(/</g, "\\u003c")));
   console.log(`${head.symbols.length} symbols, ${head.domains.length} domains -> ${out_path}`);
+  if (serving) {
+    const server = spawn(process.execPath, [join(home, "src", "server.mjs"), state], {
+      stdio: "inherit",
+      env: { ...process.env, PORT: port ?? process.env.PORT ?? "8094" },
+    });
+    server.on("exit", (code) => process.exit(code ?? 0));
+  }
 }
 
 run().catch((error) => {

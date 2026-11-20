@@ -1,7 +1,10 @@
 CAPISCE = node ../../bin/capisce.mjs
 
 map:
-	$(CAPISCE) build out.html
+	$(CAPISCE) build
+
+serve:
+	$(CAPISCE) serve --port 8094
 
 check:
 	$(CAPISCE) check
@@ -9,4 +12,4 @@ check:
 stamp:
 	$(CAPISCE) stamp
 
-.PHONY: map check stamp
+.PHONY: map serve check stamp

@@ -9,6 +9,8 @@
 .crumb:not(:last-child)::after { content: " ›"; }
 .capisce .crumb:not(:last-child):hover { color: var(--cp_foreground); }
 
+.bar_host { position: relative; }
+.capisce.commenting .pane_button { position: relative; z-index: 3; }
 .panels { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(0, 1fr); position: relative; }
 .capisce.has_trace .panels { grid-template-columns: fit-content(50%) minmax(0, 1fr); }
 .browse, .trace_panel, .code_panel { overflow: auto; min-height: 0; }
@@ -19,7 +21,19 @@
   padding: 8px 0; display: none;
 }
 .capisce.menu_open .browse { display: block; box-shadow: 4px 0 0 color-mix(in srgb, var(--cp_border) 50%, transparent); }
-.trace_panel { border-right: 1px solid var(--cp_border); padding: 12px 12px 24px; min-width: 232px; }
+.trace_panel {
+  border-right: 1px solid var(--cp_border); padding: 12px 12px 24px; min-width: 232px;
+  /* A drafting sheet: a faint tint and a fine grid, so the diagram reads as a different surface from the code. */
+  background-color: var(--cp_sheet);
+  background-image:
+    linear-gradient(var(--cp_sheet_line_strong) 1px, transparent 1px),
+    linear-gradient(90deg, var(--cp_sheet_line_strong) 1px, transparent 1px),
+    linear-gradient(var(--cp_sheet_line) 1px, transparent 1px),
+    linear-gradient(90deg, var(--cp_sheet_line) 1px, transparent 1px);
+  background-size: 120px 120px, 120px 120px, 24px 24px, 24px 24px;
+  background-position: -1px -1px;
+  background-attachment: local;
+}
 .code_panel { padding: 12px 0 40px; container-type: inline-size; }
 
 .group_title { padding: 10px 12px 4px; }
@@ -41,17 +55,17 @@
 .counts { color: var(--cp_muted); }
 
 @media (min-width: 601px) {
-  .capisce.commenting .panels, .capisce.noting .panels { padding-right: var(--cp_pane_width); }
+  .capisce.noting .panels { padding-right: var(--cp_pane_width); }
 }
 @media (min-width: 1040px) {
-  .capisce:not(.has_trace):not(.commenting) .panels { grid-template-columns: 270px minmax(0, 1fr); }
-  .capisce:not(.has_trace):not(.commenting) .browse { position: static; display: block; width: auto; max-width: none; box-shadow: none; }
-  .capisce:not(.has_trace):not(.commenting) .menu_button { display: none; }
+  .capisce:not(.has_trace) .panels { grid-template-columns: 270px minmax(0, 1fr); }
+  .capisce:not(.has_trace) .browse { position: relative; display: block; width: auto; max-width: none; box-shadow: none; }
+  .capisce:not(.has_trace) .menu_button { display: none; }
 }
 @media (min-width: 1440px) {
-  .capisce.has_trace:not(.commenting) .panels { grid-template-columns: 250px fit-content(44%) minmax(0, 1fr); }
-  .capisce.has_trace:not(.commenting) .browse { position: static; display: block; width: auto; max-width: none; box-shadow: none; }
-  .capisce.has_trace:not(.commenting) .menu_button { display: none; }
+  .capisce.has_trace .panels { grid-template-columns: 250px fit-content(44%) minmax(0, 1fr); }
+  .capisce.has_trace .browse { position: relative; display: block; width: auto; max-width: none; box-shadow: none; }
+  .capisce.has_trace .menu_button { display: none; }
 }
 @media (max-width: 600px) {
   .capisce { height: auto; min-height: var(--cp_height, 0); }

@@ -1,4 +1,5 @@
 api/target/
 node_modules/
 *.html
+.capisce/
 /out.json

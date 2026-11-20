@@ -1,7 +1,9 @@
 <script lang="ts">
   import { tick } from "svelte";
-  import { cancel_draft, comments, save_draft } from "../state/comments.svelte";
+  import { add_pictures, cancel_draft, comments, pictures_in, save_draft } from "../state/comments.svelte";
   import type { CommentDraft } from "../types";
+  import AddPicture from "./add_picture.svelte";
+  import Pictures from "./pictures.svelte";
 
   let { draft }: { draft: CommentDraft } = $props();
 
@@ -28,12 +30,20 @@
   }
 
   $effect(() => {
-    void [draft.pin.x, draft.pin.y, draft.pin.panel, draft.strokes.length, comments.note_moved_to, comments.hint];
+    void [draft.pin.x, draft.pin.y, draft.pin.panel, draft.strokes.length, draft.images.length, draft.text, comments.note_moved_to, comments.hint];
     void tick().then(() => {
       place();
       input?.focus();
     });
   });
+
+  async function pasted(event: ClipboardEvent) {
+    const files = pictures_in(event);
+    if (files.length > 0) {
+      event.preventDefault();
+      draft.images.push(...(await add_pictures(files)));
+    }
+  }
 
   function grip_down(event: PointerEvent) {
     const note = element?.getBoundingClientRect();
@@ -65,11 +75,13 @@
   style:top="{position?.top ?? 0}px"
 >
   <div class="note_handle" role="presentation" title="Drag to move" onpointerdown={grip_down}></div>
-  <textarea class="comment_input" data-draft-input placeholder="Leave a comment" bind:this={input} bind:value={draft.text}></textarea>
-  {#if comments.hint !== ""}
-    <div class="comment_note" role="alert">{comments.hint}</div>
+  <textarea class="comment_input" data-draft-input placeholder="Leave a comment" bind:this={input} bind:value={draft.text} onpaste={pasted}></textarea>
+  <Pictures names={draft.images} remove={(name) => (draft.images = draft.images.filter((each) => each !== name))} />
+  {#if comments.hint !== "" || comments.error !== ""}
+    <div class="comment_note" role="alert">{comments.hint || comments.error}</div>
   {/if}
   <div class="comment_row">
+    <AddPicture added={(names) => draft.images.push(...names)} />
     {#if draft.strokes.length > 0}
       <button class="text_button" onclick={() => (draft.strokes = [])}>Clear drawing</button>
     {/if}

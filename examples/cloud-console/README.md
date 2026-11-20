@@ -25,12 +25,15 @@ The product is a small cloud console. People sign in, and manage projects, insta
 Build the page once in the capisce repository (`pnpm install && pnpm build`), then run these from this folder:
 
 ```sh
-node ../../bin/capisce.mjs build out.html    # build the map, then open out.html in a browser
+node ../../bin/capisce.mjs build             # build the map into .capisce/index.html
+node ../../bin/capisce.mjs serve --port 8094 # build it, then serve it at http://127.0.0.1:8094 with comments and notes
 node ../../bin/capisce.mjs check             # fail if mapped code changed since the last review
 node ../../bin/capisce.mjs stamp             # record a review, once the map says what the code does
 ```
 
-`make map`, `make check` and `make stamp` do the same.
+`make map`, `make serve`, `make check` and `make stamp` do the same.
+
+The page, and the comments and notes left on it, are kept in `.capisce/`. This example ignores that whole folder in git. `node ../../bin/capisce.mjs comments` prints the comments that wait on a reply.
 
 To see the check work, change a rule in `api/src/app/instances.rs` or `console/instance_actions.ts` and run the check again.
 

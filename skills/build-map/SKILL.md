@@ -110,4 +110,5 @@ Write only what the code does. Each author should reread a few of their blocks a
 - Read the domain descriptions again against what the authors found, and correct them.
 - `capisce stamp`, then `capisce check` to confirm it passes. Commit the map files, the config and the stamps.
 - Add `capisce check` to the project's own checks, and tell contributors about the maintain skill.
-- `capisce serve <folder>` serves a built page (copy it there as `index.html`) with comments and notes, for review.
+- `capisce serve` builds the page and serves it with comments and notes, for review. The page, the comments and the notes are kept in `.capisce` at the project's root: add `.capisce/` to the project's ignore file, or only `.capisce/index.html` if the team wants to share comments.
+- Tell contributors about the address-comments skill (`capisce skill address-comments`): it is how an agent answers what a reader left on the page.

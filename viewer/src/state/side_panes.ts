@@ -12,6 +12,7 @@ export function set_commenting(on: boolean): void {
   } else {
     comments.draft = undefined;
     comments.focused = undefined;
+    comments.opened = undefined;
   }
   overlays.tooltip = undefined;
 }

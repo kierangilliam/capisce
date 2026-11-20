@@ -1,8 +1,8 @@
 .trace { display: block; }
 .lane_line { stroke: var(--cp_border); stroke-dasharray: 3 3; }
-.lane_head rect { fill: var(--cp_background); stroke: var(--cp_foreground); }
+.lane_head rect { fill: var(--cp_sheet); stroke: var(--cp_foreground); }
 .lane_head text { font: 10.5px var(--cp_mono); fill: var(--cp_module); text-anchor: middle; }
-.trace_bar { fill: var(--cp_background); stroke: var(--cp_foreground); }
+.trace_bar { fill: var(--cp_sheet); stroke: var(--cp_foreground); }
 .trace_row { cursor: pointer; outline: none; }
 .trace_hit { fill: var(--cp_foreground); fill-opacity: 0; }
 .trace_row:hover .trace_hit { fill-opacity: 0.04; }
@@ -23,5 +23,5 @@
 .trace_note { fill: var(--cp_background); stroke: var(--cp_foreground); }
 .trace_row.selected .trace_note { fill: var(--cp_foreground); }
 .trace_row.selected .trace_note ~ .trace_label { fill: var(--cp_background); }
-.trace_exit rect { fill: var(--cp_background); stroke: var(--cp_muted); stroke-dasharray: 3 2; }
+.trace_exit rect { fill: var(--cp_sheet); stroke: var(--cp_muted); stroke-dasharray: 3 2; }
 .trace_exit text { font: 10.5px var(--cp_mono); fill: var(--cp_muted); }

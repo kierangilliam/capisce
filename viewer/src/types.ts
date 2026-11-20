@@ -63,7 +63,7 @@ export type MapData = {
 
 export type Step = { title: string; target: string | undefined; exits: string[]; line: number };
 
-export type PanelName = "flow" | "code";
+export type PanelName = "flow" | "code" | "browse" | "bar";
 export type Point = [number, number];
 export type Stroke = { panel: PanelName; points: Point[] };
 export type CommentPlace = { symbol: string; step: string; step_index: number | null };
@@ -72,12 +72,15 @@ export type CommentDraft = CommentPlace & {
   target: string;
   strokes: Stroke[];
   text: string;
+  images: string[];
 };
+export type CommentReply = { id: string; author: "reader" | "agent"; text: string; images: string[]; created_at: string };
 export type SavedComment = CommentDraft & {
   id: string;
   covers: string[];
   status: "open" | "done";
-  reply?: string;
+  replies: CommentReply[];
+  unread: boolean;
   created_at: string;
 };
 export type SavedNote = { id: string; text: string; status: "open" | "done"; created_at: string };

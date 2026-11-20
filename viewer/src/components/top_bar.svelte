@@ -1,6 +1,6 @@
 <script lang="ts">
   import { catalog, crumb_label } from "../map/catalog";
-  import { comments } from "../state/comments.svelte";
+  import { comments, unread_count } from "../state/comments.svelte";
   import { go_to_entry, nav, open_changes } from "../state/navigation.svelte";
   import { notes } from "../state/notes.svelte";
   import { overlays } from "../state/overlays.svelte";
@@ -28,13 +28,13 @@
     <button class="bar_button" data-changes onclick={open_changes}>Changes ({catalog.changes.ids.length})</button>
   {/if}
   {#if notes.available}
-    <button class="bar_button" class:on={notes.on} data-notes onclick={() => set_noting(!notes.on)}>
+    <button class="bar_button pane_button" class:on={notes.on} data-notes onclick={() => set_noting(!notes.on)}>
       Notes{count_label(open_count(notes.list))}<span class="key">N</span>
     </button>
   {/if}
   {#if comments.available}
-    <button class="bar_button" class:on={comments.on} data-comments onclick={() => set_commenting(!comments.on)}>
-      Comments{count_label(open_count(comments.list))}<span class="key">C</span>
+    <button class="bar_button pane_button" class:on={comments.on} data-comments onclick={() => set_commenting(!comments.on)}>
+      Comments{count_label(open_count(comments.list))}{#if unread_count() > 0}<span class="unread_dot" title="New replies"></span>{/if}<span class="key">C</span>
     </button>
   {/if}
 </header>

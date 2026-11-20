@@ -1,6 +1,6 @@
 <script lang="ts">
   import { tick } from "svelte";
-  import { comments, finish_press, in_view, number_of } from "../state/comments.svelte";
+  import { comments, finish_press, number_of, shown_on } from "../state/comments.svelte";
   import { current, view } from "../state/navigation.svelte";
   import type { CommentDraft, PanelName, Point, SavedComment } from "../types";
 
@@ -14,8 +14,10 @@
   let press: Press | undefined = $state();
 
   const shown = $derived.by(() => {
-    const list: (SavedComment | CommentDraft)[] = comments.list.filter(in_view);
-    if (comments.draft !== undefined && in_view(comments.draft)) {
+    const list: (SavedComment | CommentDraft)[] = comments.list.filter(
+      (comment) => shown_on(panel, comment) && (comment.status === "open" || comment.id === comments.focused),
+    );
+    if (comments.draft !== undefined && shown_on(panel, comments.draft)) {
       list.push(comments.draft);
     }
     return list;

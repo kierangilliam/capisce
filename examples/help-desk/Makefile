@@ -7,7 +7,10 @@ test:
 	go build ./... && go vet ./... && go test ./...
 
 map:
-	$(CAPISCE) build capisce.html
+	$(CAPISCE) build
+
+map-serve:
+	$(CAPISCE) serve --port 8094
 
 map-check:
 	$(CAPISCE) check
@@ -15,4 +18,4 @@ map-check:
 map-stamp:
 	$(CAPISCE) stamp
 
-.PHONY: run test map map-check map-stamp
+.PHONY: run test map map-serve map-check map-stamp

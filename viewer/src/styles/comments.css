@@ -21,22 +21,53 @@
   padding: 12px; overflow: auto; display: flex; flex-direction: column; gap: 8px;
 }
 .comment_input {
-  width: 100%; min-height: 64px; resize: vertical; padding: 6px 8px;
+  width: 100%; min-height: 64px; max-height: 40vh; field-sizing: content; resize: vertical; padding: 6px 8px;
   font: 13px/1.45 var(--cp_sans); color: var(--cp_foreground); background: var(--cp_background);
   border: 1px solid var(--cp_border); border-radius: var(--cp_radius);
 }
 .comment_row { display: flex; gap: 6px 10px; align-items: center; flex-wrap: wrap; }
 .comment_row .bar_button { margin-left: auto; }
 .comment_note { font-size: 11.5px; color: var(--cp_muted); }
-.saved_comment { border-top: 1px solid var(--cp_border); padding-top: 8px; display: flex; flex-direction: column; gap: 4px; }
-.saved_comment.is_focused { border-top-color: var(--cp_annotation); }
-.saved_comment.done .comment_text { text-decoration: line-through; color: var(--cp_muted); }
-.capisce .comment_where { font: 11px/1.4 var(--cp_mono); overflow-wrap: anywhere; }
-.comment_where:hover { text-decoration: underline; text-underline-offset: 2px; }
+.comments_sheet {
+  position: absolute; z-index: 7; right: 12px; bottom: 12px; width: 340px; max-width: calc(100% - 24px); max-height: min(62%, 560px);
+  background: var(--cp_background); border: 1px solid var(--cp_foreground); border-radius: var(--cp_radius);
+  box-shadow: 3px 3px 0 var(--cp_border); display: flex; flex-direction: column;
+}
+.sheet_head { display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; border-bottom: 1px solid var(--cp_border); }
+.sheet_body { overflow: auto; padding: 0 12px 10px; display: flex; flex-direction: column; }
+.sheet_body > .comment_note { padding-top: 10px; }
+.saved_comment { border-bottom: 1px solid var(--cp_border); padding: 8px 0; display: flex; flex-direction: column; gap: 6px; }
+.saved_comment.is_focused .comment_number { text-decoration: underline; }
+.saved_comment.done .comment_head .comment_text { color: var(--cp_muted); }
+.capisce .comment_head { display: flex; flex-direction: column; gap: 2px; width: 100%; }
+.capisce .comment_where { font: 11px/1.4 var(--cp_mono); overflow-wrap: anywhere; color: var(--cp_muted); }
+.comment_text.clipped { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.unread_mark { margin-left: 6px; padding: 0 5px; border-radius: 8px; background: var(--cp_annotation); color: #ffffff; font: 600 10px/1.6 var(--cp_sans); white-space: nowrap; }
+.unread_dot { display: inline-block; width: 7px; height: 7px; margin-left: 5px; border-radius: 50%; background: var(--cp_annotation); vertical-align: middle; }
+.thread_reply { border-left: 2px solid var(--cp_border); padding-left: 8px; display: flex; flex-direction: column; gap: 2px; }
+.thread_reply.agent { border-left-color: var(--cp_foreground); }
+.reply_input { min-height: 44px; }
+.older_toggle { align-self: flex-start; margin-top: 10px; }
+.older_group { padding-top: 12px; }
+.pictures { display: flex; flex-wrap: wrap; gap: 6px; }
+.picture { position: relative; display: block; }
+.picture img { display: block; height: 64px; max-width: 140px; object-fit: cover; border: 1px solid var(--cp_border); border-radius: var(--cp_radius); }
+.capisce .picture_remove {
+  position: absolute; top: -6px; right: -6px; width: 16px; height: 16px; border-radius: 50%;
+  background: var(--cp_foreground); color: var(--cp_background); font: 12px/16px var(--cp_sans); text-align: center;
+}
+.add_picture { cursor: pointer; }
+.capisce .unread_notice {
+  position: absolute; z-index: 7; right: 12px; bottom: 12px; padding: 6px 10px;
+  background: var(--cp_background); border: 1px solid var(--cp_foreground); border-radius: var(--cp_radius);
+  box-shadow: 3px 3px 0 var(--cp_border);
+}
+.unread_notice::before { content: ""; display: inline-block; width: 7px; height: 7px; margin-right: 7px; border-radius: 50%; background: var(--cp_annotation); }
 .comment_number { color: var(--cp_annotation); font-weight: 600; margin-right: 5px; }
 .comment_target { font: 11px/1.4 var(--cp_mono); color: var(--cp_muted); overflow-wrap: anywhere; }
 .comment_text { white-space: pre-wrap; overflow-wrap: anywhere; }
-.comment_reply { font-size: 12px; color: var(--cp_muted); white-space: pre-wrap; overflow-wrap: anywhere; }
 @media (max-width: 600px) {
+  .comments_sheet, .capisce .unread_notice { position: fixed; }
+  .comments_sheet { max-height: 48vh; }
   .side_pane { position: static; width: auto; max-width: none; border-left: 0; border-top: 1px solid var(--cp_border); }
 }

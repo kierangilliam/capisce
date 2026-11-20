@@ -1,32 +1,34 @@
 // Serves a built map, the comments left on it, and the notes kept about it.
-// Everything lives in one folder, given as the first argument: index.html, comments.json and notes.json.
+// Everything lives in the state folder, given as the first argument: index.html, comments.json, notes.json
+// and comments/screenshots/.
 import { randomUUID } from "node:crypto";
-import { existsSync, readFileSync, renameSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { createServer } from "node:http";
 import { join, resolve } from "node:path";
+import {
+  AUTHORS,
+  IMAGE_TYPES,
+  STATUSES,
+  add_reply,
+  images_of,
+  notes_path as notes_path_in,
+  read_comments as read_comments_in,
+  read_list,
+  screenshots_folder,
+  text_of,
+  write_comments as write_comments_in,
+  write_list,
+} from "./comments.mjs";
 
-const root = resolve(process.argv[2] ?? ".");
-const comments_path = join(root, "comments.json");
-const notes_path = join(root, "notes.json");
+const root = resolve(process.argv[2] ?? ".capisce");
+const notes_path = notes_path_in(root);
 const port = Number(process.env.PORT ?? 8094);
 const MAX_BODY_CHARS = 2_000_000;
-const PANELS = ["flow", "code"];
-const STATUSES = ["open", "done"];
+const MAX_IMAGE_BYTES = 12_000_000;
+const PANELS = ["flow", "code", "browse", "bar"];
 
-function read_list(path) {
-  if (!existsSync(path)) {
-    return [];
-  }
-  return JSON.parse(readFileSync(path, "utf8"));
-}
-
-function write_list(path, list) {
-  writeFileSync(`${path}.tmp`, `${JSON.stringify(list, null, 2)}\n`);
-  renameSync(`${path}.tmp`, path);
-}
-
-const read_comments = () => read_list(comments_path);
-const write_comments = (comments) => write_list(comments_path, comments);
+const read_comments = () => read_comments_in(root);
+const write_comments = (comments) => write_comments_in(root, comments);
 
 function send(response, status, body, type = "application/json") {
   response.writeHead(status, { "content-type": type, "cache-control": "no-store" });
@@ -47,13 +49,6 @@ async function read_body(request) {
   }
   return JSON.parse(text);
 }
-
-const text_of = (value) => {
-  if (typeof value === "string") {
-    return value;
-  }
-  return "";
-};
 
 const is_point = (value) => Array.isArray(value) && value.length === 2 && value.every(Number.isFinite);
 
@@ -77,15 +72,67 @@ function comment_of(body) {
     target: text_of(body.target),
     covers: Array.isArray(body.covers) ? body.covers.map(text_of) : [],
     text: text_of(body.text).trim(),
+    images: images_of(body.images),
     pin: { panel: pin.panel, x: pin.x, y: pin.y },
     strokes: body.strokes.map(({ panel, points }) => ({ panel, points })),
     status: "open",
+    replies: [],
+    unread: false,
     created_at: new Date().toISOString(),
   };
-  if (comment.symbol === "" || (comment.text === "" && comment.strokes.length === 0)) {
+  const is_empty = comment.text === "" && comment.strokes.length === 0 && comment.images.length === 0;
+  if (comment.symbol === "" || is_empty) {
     return undefined;
   }
   return comment;
+}
+
+async function handle_reply(request, response, id) {
+  const body = await read_body(request);
+  let author = "reader";
+  if (AUTHORS.includes(body.author)) {
+    author = body.author;
+  }
+  if (text_of(body.text).trim() === "" && images_of(body.images).length === 0) {
+    return send(response, 400, { error: "Write a reply first, then send it again." });
+  }
+  const comment = add_reply(root, id, { author, text: body.text, images: body.images, status: body.status });
+  if (comment === undefined) {
+    return send(response, 404, { error: "This comment is gone. Refresh the page." });
+  }
+  console.log(JSON.stringify({ event: "comment.replied", id: comment.id, author }));
+  return send(response, 201, comment);
+}
+
+async function handle_screenshot(request, response, name) {
+  const folder = screenshots_folder(root);
+  if (request.method === "GET" && name !== undefined) {
+    const path = join(folder, name);
+    const type = Object.keys(IMAGE_TYPES).find((each) => name.endsWith(`.${IMAGE_TYPES[each]}`));
+    if (images_of([name]).length === 0 || type === undefined || !existsSync(path)) {
+      return send(response, 404, "Not found", "text/plain");
+    }
+    response.writeHead(200, { "content-type": type, "cache-control": "private, max-age=86400" });
+    return response.end(readFileSync(path));
+  }
+  const extension = IMAGE_TYPES[request.headers["content-type"]];
+  if (request.method !== "POST" || name !== undefined || extension === undefined) {
+    return send(response, 400, { error: "Add a PNG, JPEG, GIF or WebP picture." });
+  }
+  const chunks = [];
+  let size = 0;
+  for await (const chunk of request) {
+    size += chunk.length;
+    if (size > MAX_IMAGE_BYTES) {
+      return send(response, 400, { error: "This picture is too large. Add one under 12 MB." });
+    }
+    chunks.push(chunk);
+  }
+  const saved_name = `${randomUUID()}.${extension}`;
+  mkdirSync(folder, { recursive: true });
+  writeFileSync(join(folder, saved_name), Buffer.concat(chunks));
+  console.log(JSON.stringify({ event: "screenshot.saved", name: saved_name, size }));
+  return send(response, 201, { name: saved_name });
 }
 
 async function handle_comments(request, response, id) {
@@ -109,11 +156,15 @@ async function handle_comments(request, response, id) {
   }
   if (request.method === "PATCH") {
     const body = await read_body(request);
-    if (!STATUSES.includes(body.status)) {
-      return send(response, 400, { error: "Set the status to open or done." });
+    if (!STATUSES.includes(body.status) && typeof body.unread !== "boolean") {
+      return send(response, 400, { error: "Set the status to open or done, or unread to true or false." });
     }
-    found.status = body.status;
-    found.reply = text_of(body.reply) || found.reply;
+    if (STATUSES.includes(body.status)) {
+      found.status = body.status;
+    }
+    if (typeof body.unread === "boolean") {
+      found.unread = body.unread;
+    }
     write_comments(comments);
     console.log(JSON.stringify({ event: "comment.status_set", id, status: found.status }));
     return send(response, 200, found);
@@ -168,6 +219,14 @@ async function handle_notes(request, response, id) {
 const server = createServer(async (request, response) => {
   const path = new URL(request.url, "http://localhost").pathname;
   try {
+    const reply_match = /^\/api\/comments\/([\w-]+)\/replies$/.exec(path);
+    if (reply_match !== null && request.method === "POST") {
+      return await handle_reply(request, response, reply_match[1]);
+    }
+    const screenshot_match = /^\/api\/screenshots(?:\/([\w.-]+))?$/.exec(path);
+    if (screenshot_match !== null) {
+      return await handle_screenshot(request, response, screenshot_match[1]);
+    }
     const comments_match = /^\/api\/comments(?:\/([\w-]+))?$/.exec(path);
     if (comments_match !== null) {
       return await handle_comments(request, response, comments_match[1]);

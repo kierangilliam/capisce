@@ -2,15 +2,19 @@ import { tick } from "svelte";
 import { symbol_of } from "../map/catalog";
 import { steps_of } from "../map/steps";
 import type { CommentDraft, CommentPlace, PanelName, Point, SavedComment, Stroke } from "../types";
-import { api_request } from "./api";
+import { api_request, upload_screenshot } from "./api";
 import { current, go } from "./navigation.svelte";
 import { panel_element } from "./scrolling";
 
 const SAVE_FAILED = "The comment was not saved. Check your connection, then save it again.";
 const CHANGE_FAILED = "The comment was not changed. Check your connection, then try again.";
-const EMPTY_DRAFT = "Write a comment or draw first.";
+const EMPTY_DRAFT = "Write a comment, add a picture or draw first.";
+const PICTURE_FAILED = "The picture was not added. Use a PNG, JPEG, GIF or WebP under 12 MB, then add it again.";
 const ANNOTATED =
-  ".line, .stage_label, .trace_row, .lane_head, .code_name, .code_doc, .peek_doc, .relation, .panel_label, .page_name, .page_doc, .model_box, .domain_box, .flow_card, .data_links";
+  ".line, .stage_label, .trace_row, .lane_head, .code_name, .code_doc, .peek_doc, .relation, .panel_label, .page_name, .page_doc, .model_box, .domain_box, .flow_card, .data_links, .browse_item, .browse_module summary, .group_title, .crumb, .bar_button";
+/** Parts of the page that look the same on every page, so a comment on them shows everywhere. */
+const EVERYWHERE: PanelName[] = ["browse", "bar"];
+const REFRESH_MS = 20_000;
 const COVERABLE = ".line, .stage_label, .trace_row";
 const MAX_COVERED = 40;
 
@@ -18,6 +22,8 @@ export const comments = $state({
   list: [] as SavedComment[],
   draft: undefined as CommentDraft | undefined,
   focused: undefined as string | undefined,
+  opened: undefined as string | undefined,
+  older_shown: false,
   error: "",
   hint: "",
   available: false,
@@ -29,6 +35,12 @@ const selected_step = (): number | null => current().step ?? null;
 
 export const in_view = (comment: CommentPlace): boolean =>
   comment.symbol === current().id && comment.step_index === selected_step();
+
+/** Whether a comment's pin or drawings belong on this part of the page right now. */
+export const shown_on = (panel: PanelName, comment: SavedComment | CommentDraft): boolean =>
+  EVERYWHERE.includes(panel) || in_view(comment);
+
+export const unread_count = (): number => comments.list.filter((comment) => comment.unread).length;
 
 export const place_label = ({ symbol, step }: CommentPlace): string => {
   if (step === "") {
@@ -62,7 +74,7 @@ export function start_draft(panel: PanelName, [x, y]: Point, client_x: number, c
   if (under !== undefined && under !== null) {
     target = one_line(under);
   }
-  comments.draft = { ...view_place(), pin: { panel, x, y }, target, strokes: [], text: "" };
+  comments.draft = { ...view_place(), pin: { panel, x, y }, target, strokes: [], text: "", images: [] };
   comments.note_moved_to = undefined;
   comments.hint = "";
 }
@@ -74,7 +86,8 @@ export function finish_press(panel: PanelName, points: Point[], drew: boolean, c
   if (first === undefined) {
     return;
   }
-  const untouched = draft !== undefined && !drew && draft.strokes.length === 0 && draft.text === "";
+  const untouched =
+    draft !== undefined && !drew && draft.strokes.length === 0 && draft.text === "" && draft.images.length === 0;
   if (draft === undefined || untouched) {
     start_draft(panel, first, client_x, client_y);
   }
@@ -125,7 +138,7 @@ export function save_draft(): Promise<void> {
     return Promise.resolve();
   }
   draft.text = draft.text.trim();
-  if (draft.text === "" && draft.strokes.length === 0) {
+  if (draft.text === "" && draft.strokes.length === 0 && draft.images.length === 0) {
     comments.hint = EMPTY_DRAFT;
     return Promise.resolve();
   }
@@ -145,7 +158,49 @@ export const set_comment_status = (id: string, status: SavedComment["status"]): 
 export const delete_comment = (id: string): Promise<void> =>
   change_comments(CHANGE_FAILED, () => api_request("comments", "DELETE", id));
 
+export const set_comment_unread = (id: string, unread: boolean): Promise<void> =>
+  change_comments(CHANGE_FAILED, () => api_request("comments", "PATCH", id, { unread }));
+
+/** Opens a comment's thread in the sheet. Seeing the thread is what marks it read. */
+export function open_thread(comment: SavedComment): void {
+  comments.opened = comment.id;
+  if (comment.unread) {
+    void set_comment_unread(comment.id, false);
+  }
+}
+
+export function send_reply(id: string, text: string, images: string[]): Promise<void> {
+  if (text.trim() === "" && images.length === 0) {
+    return Promise.resolve();
+  }
+  return change_comments(SAVE_FAILED, () => api_request("comments", "POST", id, { text, images }, "replies"));
+}
+
+/** Saves the pictures and returns their names. Sets the error and returns what did save when one fails. */
+export async function add_pictures(files: Iterable<File>): Promise<string[]> {
+  const names: string[] = [];
+  comments.error = "";
+  for (const file of files) {
+    if (!file.type.startsWith("image/")) {
+      continue;
+    }
+    try {
+      names.push(await upload_screenshot(file));
+    } catch (error) {
+      console.warn(error);
+      comments.error = PICTURE_FAILED;
+    }
+  }
+  return names;
+}
+
+export const pictures_in = (event: ClipboardEvent): File[] =>
+  [...(event.clipboardData?.files ?? [])].filter((file) => file.type.startsWith("image/"));
+
 export async function show_comment(comment: SavedComment): Promise<void> {
+  if (EVERYWHERE.includes(comment.pin.panel)) {
+    return;
+  }
   if (!in_view(comment)) {
     await go(comment.symbol, { step: comment.step_index ?? undefined });
     await tick();
@@ -160,4 +215,15 @@ export async function load_comments(): Promise<void> {
   } catch {
     comments.available = false;
   }
+}
+
+/** Replies are written from outside the page, so the list is read again now and then, and when the reader returns. */
+export function keep_comments_fresh(): void {
+  const refresh = () => {
+    if (comments.available && document.visibilityState === "visible") {
+      void load_comments();
+    }
+  };
+  setInterval(refresh, REFRESH_MS);
+  document.addEventListener("visibilitychange", refresh);
 }

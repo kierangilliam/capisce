@@ -56,6 +56,14 @@ route POST /api/orders/:id/refund(id, amount=None):
 - **`domain`.** Optional for code, required for a flow: the domain this belongs to, when it is not the domain of its file.
 - **`doc`.** One or two sentences in plain words: what this does and why someone would call it. No internal names.
 - **Pseudo-code**, after `---`. Python-like and short, at most about 62 characters a line. It says what happens and in what order, with the conditions and outcomes that matter to the business. Leave out logging detail, types, retries and plumbing. Name the errors and statuses a caller can get.
+- **Long lists.** A list of fields or values that does not fit on one line goes one to a line, indented once, each with a comma after it. Do not carry it on under the first one. The same holds inside `{…}`, with the closing bracket on a line of its own.
+
+  ```text
+  update Order:
+      refunded_amount,
+      refunded_at,
+      status,
+  ```
 
 ## Stages
 

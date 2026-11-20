@@ -8,6 +8,7 @@
   import DraftNote from "./components/draft_note.svelte";
   import NotesPane from "./components/notes_pane.svelte";
   import RealCodeModal from "./components/real_code_modal.svelte";
+  import SelectionComment from "./components/selection_comment.svelte";
   import SymbolPage from "./components/symbol_page.svelte";
   import Tooltip from "./components/tooltip.svelte";
   import TopBar from "./components/top_bar.svelte";
@@ -124,6 +125,7 @@
       {unread_count()} new {unread_count() === 1 ? "reply" : "replies"} to your comments
     </button>
   {/if}
+  {#if comments.available && !comments.on}<SelectionComment />{/if}
   {#if overlays.tooltip !== undefined}<Tooltip tooltip={overlays.tooltip} />{/if}
   {#if comments.on && comments.draft !== undefined}<DraftNote draft={comments.draft} />{/if}
   {#if real_code_symbol !== undefined}<RealCodeModal symbol={real_code_symbol} />{/if}

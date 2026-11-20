@@ -6,6 +6,7 @@
   border-radius: 50% 50% 50% 0; background: var(--cp_annotation); color: #ffffff;
   font: 600 11px/22px var(--cp_mono); text-align: center; pointer-events: none;
 }
+.capisce .selection_comment { position: absolute; z-index: 6; background: var(--cp_background); border-color: var(--cp_foreground); box-shadow: 2px 2px 0 var(--cp_border); user-select: none; }
 .draft_note {
   position: absolute; z-index: 6; width: 264px; max-width: calc(100% - 16px);
   background: var(--cp_background); border: 1px solid var(--cp_foreground); border-radius: var(--cp_radius);

@@ -102,6 +102,8 @@ Create `shared.map` in the maps folder first, for names every domain uses (the s
 
 Domains do not depend on each other's map files, so several agents can write them at once, one file each. Have each build with `--only <its file>` so unfinished files do not break the others. Tell each which files are its own and that ids must be unique across files.
 
+Write a list of fields that does not fit on one line as `update Order:` with one field to a line under it, indented once, each with a comma after it. Do not carry the list on under its first field.
+
 Write only what the code does. Each author should reread a few of their blocks against the code before finishing, and report anything the code does that looks wrong: mapping a codebase turns up bugs.
 
 ## 5. Check, stamp and share

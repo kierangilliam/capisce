@@ -11,7 +11,7 @@ const CHANGE_FAILED = "The comment was not changed. Check your connection, then 
 const EMPTY_DRAFT = "Write a comment, add a picture or draw first.";
 const PICTURE_FAILED = "The picture was not added. Use a PNG, JPEG, GIF or WebP under 12 MB, then add it again.";
 const ANNOTATED =
-  ".line, .stage_label, .trace_row, .lane_head, .code_name, .code_doc, .peek_doc, .relation, .panel_label, .page_name, .page_doc, .model_box, .domain_box, .flow_card, .data_links, .browse_item, .browse_module summary, .group_title, .crumb, .bar_button";
+  ".line, .stage_label, .trace_row, .lane_head, .code_name, .called_name, .code_doc, .peek_doc, .relation, .panel_label, .page_name, .page_doc, .model_box, .domain_box, .flow_card, .data_links, .browse_item, .browse_module summary, .group_title, .crumb, .bar_button";
 /** Parts of the page that look the same on every page, so a comment on them shows everywhere. */
 const EVERYWHERE: PanelName[] = ["browse", "bar"];
 const REFRESH_MS = 20_000;
@@ -57,7 +57,19 @@ export const number_of = (comment: SavedComment | CommentDraft): number => {
   return index + 1;
 };
 
-const one_line = (element: Element): string => (element.textContent ?? "").trim().replace(/\s+/g, " ").slice(0, 200);
+const MAX_TARGET = 200;
+const WRAPPED_NAME = ".lane_head";
+
+const one_line = (text: string): string => text.trim().replace(/\s+/g, " ").slice(0, MAX_TARGET);
+
+/** What an element says. A drawing keeps its words in several parts, which read as one text only with spaces between. */
+function text_of(element: Element): string {
+  const parts = [...element.querySelectorAll("text")].map((part) => part.textContent ?? "");
+  if (parts.length === 0 || element.matches(WRAPPED_NAME)) {
+    return one_line(element.textContent ?? "");
+  }
+  return one_line(parts.join(" "));
+}
 
 function view_place(): CommentPlace {
   const entry = current();
@@ -72,11 +84,20 @@ export function start_draft(panel: PanelName, [x, y]: Point, client_x: number, c
     .find((element) => element !== null);
   let target = "";
   if (under !== undefined && under !== null) {
-    target = one_line(under);
+    target = text_of(under);
   }
+  draft_at(panel, [x, y], target);
+}
+
+function draft_at(panel: PanelName, [x, y]: Point, target: string): void {
   comments.draft = { ...view_place(), pin: { panel, x, y }, target, strokes: [], text: "", images: [] };
   comments.note_moved_to = undefined;
   comments.hint = "";
+}
+
+/** Starts a comment on text the reader selected: pinned where the selection begins, and about its words. */
+export function start_draft_on_selection(panel: PanelName, point: Point, selected_text: string): void {
+  draft_at(panel, point, one_line(selected_text));
 }
 
 /** What the reader pressed and released on a panel: a click drops a pin, a drag adds a drawing. */
@@ -112,7 +133,7 @@ function covered_by(strokes: Stroke[]): string[] {
       const box = element.getBoundingClientRect();
       const apart =
         box.right < Math.min(...xs) || box.left > Math.max(...xs) || box.bottom < Math.min(...ys) || box.top > Math.max(...ys);
-      const text = one_line(element);
+      const text = text_of(element);
       if (!apart && text !== "" && !covered.includes(text)) {
         covered.push(text);
       }

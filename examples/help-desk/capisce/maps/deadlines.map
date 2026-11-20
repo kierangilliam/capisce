@@ -19,8 +19,12 @@ doc: How long a customer may wait for a reply, from the ticket's priority and th
 ---
 def Window(priority, plan):
     #> The priority sets the base
-    window = {"urgent": 1 hour, "high": 4 hours,
-              "normal": 8 hours, "low": 24 hours}[priority]
+    window = {
+        "urgent": 1 hour,
+        "high": 4 hours,
+        "normal": 8 hours,
+        "low": 24 hours,
+    }[priority]
     #> Premium customers wait half as long
     if plan == "premium":
         return window / 2

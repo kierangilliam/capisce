@@ -7,8 +7,11 @@ doc: Signs a person in with a name and password. The answer holds the session to
 route POST /v1/login(user_name, password):
     #> Check the name and password -> sessions.login | 401 InvalidCredentials | 403 AccountLocked
     user, session = sessions.login(user_name, password)
-    return {token: session.token, user_name: user.name,
-            expires_at: session.expires_at}
+    return {
+        token: session.token,
+        user_name: user.name,
+        expires_at: session.expires_at,
+    }
 
 === POST /v1/logout
 kind: route

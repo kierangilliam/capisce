@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { go, select_stage, toggle_real_code, view } from "../state/navigation.svelte";
+  import { select_stage, toggle_real_code, view } from "../state/navigation.svelte";
   import type { MapSymbol } from "../types";
   import DocText from "./doc_text.svelte";
   import RealCode from "./real_code.svelte";
@@ -15,16 +15,15 @@
   const is_own_page = $derived(trace_root === undefined);
 </script>
 
+{#if trace_root !== undefined}
+  <div class="called_name_row of_page">
+    <div class="called_name" title="Called in the trace of {trace_root.id}"><SymbolLink id={symbol.id} /></div>
+  </div>
+{/if}
 <div class="code_header">
-  {#if trace_root !== undefined}
-    <div class="trace_context">
-      Called in the trace of {trace_root.id}.
-      <button class="peek_open" data-go={symbol.id} onclick={() => go(symbol.id)}>Open on its own ›</button>
-    </div>
-  {/if}
   {#if symbol.kind === "flow"}
     <div class="page_name">{symbol.id}</div>
-  {:else if symbol.kind !== "route" || !is_own_page}
+  {:else if is_own_page && symbol.kind !== "route"}
     <div class="code_name"><SymbolLink id={symbol.id} /></div>
   {/if}
   <DocText doc={symbol.doc} doc_before={symbol.diff?.doc_before} class_name="code_doc" focused={focus === "doc"} />

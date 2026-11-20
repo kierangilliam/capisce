@@ -8,14 +8,18 @@
 </script>
 
 <div class="peek" role="presentation" onclick={(event) => event.stopPropagation()}>
-  <div class="peek_header">
-    <SymbolLink id={target.id} />
+  <div class="called_name_row">
+    <div class="called_name">
+      <SymbolLink id={target.id} />
+      {#if target.pseudo.length > 0}
+        <button class="peek_open" data-go={target.id} onclick={() => go(target.id)}>open ›</button>
+      {/if}
+    </div>
+  </div>
+  <div class="peek_scroll">
+    <div class="peek_doc">{target.doc}</div>
     {#if target.pseudo.length > 0}
-      <button class="peek_open" data-go={target.id} onclick={() => go(target.id)}>open ›</button>
+      <StageLines symbol={target} />
     {/if}
   </div>
-  <div class="peek_doc">{target.doc}</div>
-  {#if target.pseudo.length > 0}
-    <StageLines symbol={target} />
-  {/if}
 </div>

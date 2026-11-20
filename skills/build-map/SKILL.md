@@ -42,8 +42,10 @@ export default {
 - **`commands.stamp`** is what the check tells people to run.
 - **`extract`** says what is read from the code. Each rule finds symbols in the files it names.
   - `functions` finds exported functions. Each becomes `<file>.<name>`. Give `patterns` (regular expressions with a `name` group) for another language or style.
-  - `routes` finds endpoints, and makes each one something the check requires pseudo-code for. Give `definition` (a line that starts an endpoint) and `pattern` (with `method` and `path` groups) if the framework does not write `app.get("/path", …)`.
+  - `routes` finds endpoints, and makes each one something the check requires pseudo-code for. Give `definition` (a line that starts an endpoint) and `pattern` (with `method` and `path` groups) if the framework does not write `app.get("/path", …)`. Give `span` when the method and path sit more than two lines into the definition.
   - A path names your own extractor: a module whose default export takes `{ rule, files, lines_of, statement_at, short_doc }` and returns `{ symbols, required, links }`. Use one for the data model, since every framework defines models differently. Give each model `kind: "model"` and write its `pseudo` from its fields; return `links` as `{ from, field, to }` for fields that point at another model. `required` lists places (`{ path, line, start, end }`) that must have pseudo-code.
+
+A statement is read from its first line to the line where its brackets close and it ends in `;` or `}`. For a language without semicolons, list its file extension in `balanced_extensions` (`.go` is there already), so a statement ends as soon as its brackets close.
 
 Run `capisce build out.html --json out.json` and read the JSON to see what was found. Fix the rules until the symbols are the ones a reader would expect: no tests, no generated code, no helpers nobody would look up.
 

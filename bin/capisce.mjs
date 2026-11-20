@@ -37,15 +37,24 @@ const [command, target] = args;
 async function map_at(ref, config) {
   const folder = mkdtempSync(join(tmpdir(), "capisce_base_"));
   try {
+    const git = (...git_args) => execFileSync("git", git_args, { cwd: root, encoding: "utf8" }).trim();
+    // The project may sit in a folder of a larger repository: read that folder of the older commit.
+    const folder_in_repo = git("rev-parse", "--show-prefix").replace(/\/$/, "");
+    let tree = ref;
+    let within = "";
+    if (folder_in_repo !== "") {
+      tree = `${ref}:${folder_in_repo}`;
+      within = `${folder_in_repo}/`;
+    }
     const paths = [...config.sources, config.maps, config.domains].filter((path) => {
       try {
-        execFileSync("git", ["cat-file", "-e", `${ref}:${path}`], { cwd: root, stdio: "ignore" });
+        execFileSync("git", ["cat-file", "-e", `${ref}:${within}${path}`], { cwd: root, stdio: "ignore" });
         return true;
       } catch {
         return false;
       }
     });
-    const archive = execFileSync("git", ["archive", ref, ...paths], { cwd: root, maxBuffer: 1 << 30 });
+    const archive = execFileSync("git", ["archive", tree, ...paths], { cwd: root, maxBuffer: 1 << 30 });
     execFileSync("tar", ["-x", "-C", folder], { input: archive });
     return await build_map(folder, config, { config_root: root, strict: false });
   } finally {

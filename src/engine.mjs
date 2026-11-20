@@ -14,6 +14,7 @@ const DEFAULTS = {
   sources: [],
   extract: [],
   commands: { stamp: "capisce stamp" },
+  balanced_extensions: [".go"],
 };
 
 export async function load_config(root) {
@@ -111,7 +112,7 @@ function glob_pattern(glob) {
 }
 
 /** How one checkout's files are read. Every path is relative to `root`. */
-function source_reader(root) {
+function source_reader(root, config) {
   const file_lines = new Map();
   const lines_of = (path) => {
     if (!file_lines.has(path)) {
@@ -126,9 +127,11 @@ function source_reader(root) {
     let start = index;
     let end = index;
     let depth = 0;
+    // A language without semicolons ends a statement as soon as its brackets close.
+    const balanced = config.balanced_extensions.includes(extname(path));
     for (; end < lines.length; end += 1) {
       depth += bracket_depth_change(lines[end]);
-      if (depth <= 0 && /[;}]$/.test(lines[end].trim())) {
+      if (depth <= 0 && (balanced || /[;}]$/.test(lines[end].trim()))) {
         break;
       }
     }
@@ -137,7 +140,7 @@ function source_reader(root) {
     }
     const comment = lines
       .slice(start, index)
-      .map((line) => line.replace(/^\s*(\/\*\*|\*\/|\*|\/\/)\s?/, "").replace(/\s*\*\/$/, ""))
+      .map((line) => line.replace(/^\s*(\/\*\*|\*\/|\*|\/\/+!?)\s?/, "").replace(/\s*\*\/$/, ""))
       .join(" ")
       .trim();
     return {
@@ -209,7 +212,10 @@ function extract_functions({ rule, files, lines_of, statement_at }) {
   return { symbols };
 }
 
-/** Finds the endpoints a file defines. Each one must have pseudo-code, whether or not its path could be read. */
+/**
+ * Finds the endpoints a file defines. Each one must have pseudo-code, whether or not its path could be read.
+ * `span` is how many lines from the start of a definition hold its method and path.
+ */
 function extract_routes({ rule, files, lines_of, statement_at }) {
   const symbols = [];
   const required = [];
@@ -221,7 +227,8 @@ function extract_routes({ rule, files, lines_of, statement_at }) {
       }
       const { src, comment } = statement_at(path, index);
       required.push({ path, line: index + 1, start: src.start, end: src.end });
-      const found = (rule.pattern ?? ROUTE_ID).exec(`${line}${lines[index + 1] ?? ""}`)?.groups;
+      const opening = lines.slice(index, index + (rule.span ?? 2)).join("");
+      const found = (rule.pattern ?? ROUTE_ID).exec(opening)?.groups;
       if (found !== undefined) {
         symbols.push({
           id: `${found.method.toUpperCase()} ${found.path}`,
@@ -254,7 +261,7 @@ const NO_SOURCE = { path: "", start: 0, end: 0, code: "" };
  * commit is read with `strict` off, since its domains may not hold every file today's config reads.
  */
 export async function build_map(root, config, { config_root = root, only, strict = true } = {}) {
-  const source = source_reader(root);
+  const source = source_reader(root, config);
   const maps_folder = join(root, config.maps);
   let map_names = [];
   if (existsSync(maps_folder)) {

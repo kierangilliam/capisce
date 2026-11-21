@@ -31,7 +31,7 @@ function row_of(row) {
 export async function fetch_timings(root, config, map) {
   if (typeof config.timings !== "string") {
     throw new Error(
-      'This project has no source of timings. Add `timings: "./path/to/timings.mjs"` to capisce.config.mjs. The README says what the module returns.',
+      'This project has no source of timings. Add `timings: "./path/to/timings.mjs"` to capisce.config.mjs. docs/reference.md says what the module returns.',
     );
   }
   const module = await import(pathToFileURL(resolve(root, config.timings)).href);

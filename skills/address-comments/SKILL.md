@@ -7,7 +7,7 @@ description: An agent will pull your comments and address them, either replying 
 
 A reader leaves comments on the page: a pin or a drawing on some part of it, some words, sometimes a picture. Each comment is a thread. You change what the comment asks for, then answer in the thread. The reader gets a notice for every answer, so the thread is how they learn what you did.
 
-Run capisce the way the project wraps it (look for a package script, a Makefile target or a script that calls it). If there is none, clone the capisce repository and run `node <capisce>/bin/capisce.mjs <command>` from the project's root. `capisce skill <name>` prints any of the skills named here. The comments are local files in the project's `.capisce` folder, beside the committed map (or in another folder, if the project sets `CAPISCE_STATE`). Git ignores them, so do not commit them. These commands work with or without the page being served.
+Run capisce the way the project wraps it (look for a package script, a Makefile target or a script that calls it). If the project has `.capisce/README.md`, read it first: it says what is specific to this project, such as its own commands. If there is none, clone the capisce repository and run `node <capisce>/bin/capisce.mjs <command>` from the project's root. `capisce skill <name>` prints any of the skills named here. The comments are local files in the project's `.capisce` folder, beside the committed map (or in another folder, if the project sets `CAPISCE_STATE`). Git ignores them, so do not commit them. These commands work with or without the page being served.
 
 ## 1. Read what is waiting
 

@@ -109,6 +109,7 @@ Write only what the code does. Each author should reread a few of their blocks a
 - `capisce build out.html` with every program file. Fix any id used twice and any stage that points at nothing.
 - Read the domain descriptions again against what the authors found, and correct them.
 - `capisce stamp`, then `capisce check` to confirm it passes. Commit the config and the `.capisce` folder: the program files, the domains, the stamps, your extractors and `.capisce/.gitignore`.
+- Write `.capisce/README.md` with what is specific to this project: the commands that wrap capisce, where the config and extractors are, and any rule of this map. The other skills read it first. Commit it.
 - Add `capisce check` to the project's own checks, and tell contributors about the update skill (`capisce skill update`).
 - `capisce serve` builds the page and serves it with comments and notes, for review. The page, the timings, the comments and the notes are local files in the same `.capisce` folder. capisce writes `.capisce/.gitignore` so git leaves them out: commit that file, and do not add `.capisce/` to the project's own ignore file, or the map will not be committed. To share comments and notes through git, delete their three lines from `.capisce/.gitignore`.
 - A branch comparison (`capisce build --base <git ref>`) reads the committed map of the older commit, so it only shows changes once the map is in git.

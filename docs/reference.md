@@ -179,6 +179,17 @@ npx skills add <owner>/capisce
 
 This copies the skills into the project for the agents you pick. They keep their plain names there: `setup`, `update` and `address-comments`. If `setup` or `update` clashes with a skill you already have, install one skill at a time under another name, for example `npx skills add <owner>/capisce --skill setup --rename capisce-setup`.
 
+To turn the plugin on for everyone who works in a project, commit this to the project's `.claude/settings.json`:
+
+```json
+{
+  "extraKnownMarketplaces": { "capisce": { "source": { "source": "github", "repo": "<owner>/capisce" } } },
+  "enabledPlugins": { "capisce@capisce": true }
+}
+```
+
+What is specific to one project (its own commands, where its extractors are) goes in `.capisce/README.md`, which the skills read first.
+
 Both ways install only the skills. The skills run the capisce command line, so keep a clone of this repository as well.
 
 ## Examples

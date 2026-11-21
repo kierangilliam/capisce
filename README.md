@@ -1,10 +1,6 @@
 # Capisce
 
-For the engineers who still want to understand the code,
-
-<br>
-
-Capisce is an open source tool that helps you understand a codebase.
+[Capisce]([url](https://capisce.software/)) is an open source tool that helps you understand a codebase.
 
 As your agents iterate on your codebase, they also write the core business logic in pseudo-code. This pseudo-code helps you see a compressed form of your codebase, removing boilerplate.
 

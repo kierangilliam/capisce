@@ -41,11 +41,6 @@ const EDITS = [
       "        if new.ncpus > free_cpus or new.memory_gib > free_memory_gib:\n" +
       "            raise ApiError.RackFull                # 503\n",
   },
-  {
-    file: INSTANCES_PROGRAM,
-    from: "    # 503 AddressPoolExhausted\n",
-    to: "    # 503 AddressPoolExhausted or RackFull\n",
-  },
 ];
 
 const folder = mkdtempSync(join(tmpdir(), "capisce_diff_"));

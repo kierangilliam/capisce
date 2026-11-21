@@ -21,10 +21,6 @@ route POST /v1/instances(
     #> Find who is calling -> session_auth.authenticate | 401
     caller = session_auth.authenticate(request)
     #> Create the instance -> instances.create_instance | 400 | 403 | 404 | 409 | 503
-    # 404 ProjectNotFound, 400 InvalidRequest,
-    # 403 Forbidden or QuotaExceeded,
-    # 409 InstanceNameTaken or DiskNameTaken,
-    # 503 AddressPoolExhausted
     instance = instances.create_instance(caller, project,
         {name, ncpus, memory_gib, boot_disk_size_gib})
     return 201, instance
@@ -89,8 +85,6 @@ route POST /v1/instances/{instance}/disks/attach(
     #> Find who is calling -> session_auth.authenticate | 401
     caller = session_auth.authenticate(request)
     #> Attach the disk -> disks.attach_disk | 403 | 404 | 409
-    # 404 InstanceNotFound or DiskNotFound, 403 Forbidden,
-    # 409 DiskAttached, InstanceNotStopped or TooManyDisks
     return 202, disks.attach_disk(caller, instance, disk)
 
 === instances.create_instance

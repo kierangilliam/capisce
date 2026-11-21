@@ -61,8 +61,6 @@ route PUT /v1/projects/{project}/members(
     #> Find who is calling -> session_auth.authenticate | 401
     caller = session_auth.authenticate(request)
     #> Save the role -> projects.set_member_role | 403 | 404 | 409
-    # 404 ProjectNotFound or UserNotFound,
-    # 403 Forbidden, 409 LastAdmin
     projects.set_member_role(caller, project, user_name, role)
     return 204
 

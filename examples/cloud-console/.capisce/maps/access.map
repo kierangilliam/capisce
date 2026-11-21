@@ -39,8 +39,7 @@ def login(user_name, password):
         user = user_store.user_by_name(user_name)
         if user is None:
             raise ApiError.InvalidCredentials      # 401
-        #> Refuse a locked account | AccountLocked
-        # even the right password is refused while locked
+        #> Refuse a locked account, even with the right password | AccountLocked
         if user.locked_until is in the future:
             raise ApiError.AccountLocked           # 403
         #> Count a wrong password -> user_store.user_record_failed_login | InvalidCredentials

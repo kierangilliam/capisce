@@ -16,7 +16,7 @@ const generated = join(website, "src", "generated");
 const DATA_SLOT = "/*__CAPISCE_DATA__*/null";
 const EXAMPLES = ["cloud-console", "help-desk"];
 const FRAMED = ["cloud-console"];
-const SIDE_BY_SIDE = "POST /v1/instances";
+const SIDE_BY_SIDE = "sessions.login";
 
 if (!existsSync(viewer_page)) {
   console.error(`The capisce page has not been built yet, so the site cannot be built.\n\n  Run "pnpm install && pnpm build" in ${repo}, then run this again.`);

@@ -131,3 +131,5 @@ The money goes back the way it was paid. An order can be refunded only once in f
 ## Accuracy
 
 Write only what you read in the code. If the code does something surprising, say it. The check proves the map was revisited, not that it is right.
+
+- **No lists of errors in comments.** The ways a step can end already sit on its `#>` line after `|`. Do not repeat them as `# 404 …, 409 …` lines under it. Put what a reader must know into the step's name instead of a comment where it fits.

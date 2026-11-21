@@ -20,8 +20,6 @@ route POST /v1/disks(project, name, size_gib):
     #> Find who is calling -> session_auth.authenticate | 401
     caller = session_auth.authenticate(request)
     #> Create the disk -> disks.create_disk | 400 | 403 | 404 | 409
-    # 404 ProjectNotFound, 400 InvalidRequest,
-    # 403 Forbidden or QuotaExceeded, 409 DiskNameTaken
     disk = disks.create_disk(caller, project, name, size_gib)
     return 201, disk
 

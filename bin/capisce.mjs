@@ -6,9 +6,10 @@
 // capisce serve [--port <n>] [--base <git ref>]                                    build the page, then serve it with comments
 // capisce comments [--all]                                                         print the comments waiting on a reply
 // capisce reply <comment id> <text> [--done]                                       answer a comment in its thread
+// capisce timings                                                                  fetch how long each endpoint takes, from the project's source
 // capisce skill <name>                                                             print a skill
 // Every command reads capisce.config.mjs from --root <folder>, or from the current folder.
-// The built page, comments and notes live in the state folder: .capisce in the root, or --state <folder>,
+// The built page, comments, notes and timings live in the state folder: .capisce in the root, or --state <folder>,
 // or CAPISCE_STATE.
 import { execFileSync, spawn } from "node:child_process";
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
@@ -18,6 +19,7 @@ import { fileURLToPath } from "node:url";
 import { add_reply, awaits_reply, comment_text, read_comments } from "../src/comments.mjs";
 import { build_map, load_config } from "../src/engine.mjs";
 import { mark_changes, review_needed, stamped } from "../src/review.mjs";
+import { fetch_timings, timings_path, write_timings } from "../src/timings.mjs";
 
 const home = join(dirname(fileURLToPath(import.meta.url)), "..");
 const VIEWER = join(home, "dist", "viewer.html");
@@ -129,9 +131,19 @@ async function run() {
     console.log("The map is up to date.");
     return;
   }
+  if (command === "timings") {
+    const { timings, dropped, missing } = await fetch_timings(root, config, head);
+    write_timings(state, timings);
+    console.log(`${timings.rows.length} endpoints have timings -> ${timings_path(state)}`);
+    console.log(`${missing.length} endpoints of the map have none.`);
+    if (dropped > 0) {
+      console.log(`${dropped} rows were dropped: they name no endpoint of the map, or lack a number.`);
+    }
+    return;
+  }
   if (command !== "build" && command !== "serve") {
     throw new Error(
-      "Use: capisce build | check | stamp | serve | comments | reply | skill. See the top of bin/capisce.mjs.",
+      "Use: capisce build | check | stamp | serve | timings | comments | reply | skill. See the top of bin/capisce.mjs.",
     );
   }
   const serving = command === "serve";

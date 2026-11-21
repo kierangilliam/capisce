@@ -14,6 +14,7 @@ Run capisce the way the project wraps it (look for a script that calls it), or a
 - `capisce build <out.html> --only <map file name>` builds from one map file and `shared.map` only. It fails on a `src:` line that matches nothing and on a step that points at something that is not there.
 - `capisce build <out.html> --base <git ref>` builds the page with what changed since that commit.
 - `capisce build` with no file writes the page to `.capisce/index.html`, and `capisce serve` builds it there and serves it with comments and notes.
+- `capisce timings` fetches how long each endpoint takes, when the project's config names a source of `timings`. The served page shows them when a reader presses Tab. The numbers are kept in the state folder and never committed. After you rename or add an endpoint, check that the project's source still returns the map's ids.
 - `capisce comments` prints what readers left on the page that waits on a reply. The address-comments skill (`capisce skill address-comments`) says how to answer.
 
 ## When the check fails

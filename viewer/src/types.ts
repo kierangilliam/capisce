@@ -83,6 +83,9 @@ export type SavedComment = CommentDraft & {
   unread: boolean;
   created_at: string;
 };
+export type TimingStep = { stage: number; p50_ms: number; p95_ms: number };
+export type TimingRow = { id: string; count: number; p50_ms: number; p95_ms: number; link?: string; steps?: TimingStep[] };
+export type Timings = { fetched_at?: string; window?: string; source?: string; rows: TimingRow[] };
 export type SavedNote = { id: string; text: string; status: "open" | "done"; created_at: string };
 
 declare global {

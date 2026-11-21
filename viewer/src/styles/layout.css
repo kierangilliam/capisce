@@ -38,6 +38,15 @@
 .browse_item.removed_item .browse_name { text-decoration: line-through; }
 .method { flex: 0 0 44px; color: var(--cp_muted); }
 .browse_name { overflow-wrap: anywhere; }
+.browse_time { margin-left: auto; padding-left: 8px; white-space: nowrap; color: var(--cp_muted); }
+.browse_item.current .browse_time { color: inherit; }
+.capisce .timing_line {
+  display: block; width: 0; min-width: 100%; margin: 0 0 10px; font: 11.5px/1.5 var(--cp_sans);
+  color: var(--cp_muted); text-decoration: none;
+}
+.timing_line b { font-weight: 600; color: var(--cp_foreground); }
+a.timing_line:hover { text-decoration: underline; text-underline-offset: 2px; }
+.code_panel > .timing_line { padding: 0 14px; }
 .capisce .browse_home { display: block; padding: 2px 12px 6px; font-size: 12px; color: var(--cp_muted); }
 .capisce .browse_home:hover { color: var(--cp_foreground); }
 .capisce .browse_title { display: block; padding: 0 12px; font-weight: 600; font-size: 14px; }

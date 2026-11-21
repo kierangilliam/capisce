@@ -16,6 +16,7 @@ Customers open tickets. Agents reply, assign, escalate and close them. Each tick
 - `capisce/domains.map`: the six domains and how they relate.
 - `capisce/maps/`: the pseudo-code and flows, one file per domain, plus `shared.map`.
 - `capisce/models.mjs`: reads the Go struct types in each `models.go` as models.
+- `capisce/timings.mjs`: a sample source of timings. Its numbers are made up.
 - `capisce/stamps.json`: what was reviewed, written by `capisce stamp`.
 
 ## Run the app
@@ -45,9 +46,12 @@ node ../../bin/capisce.mjs build                # build the page into .capisce/i
 node ../../bin/capisce.mjs serve --port 8094    # build it, then serve it at http://127.0.0.1:8094 with comments and notes
 node ../../bin/capisce.mjs check                # fails when mapped code changed
 node ../../bin/capisce.mjs stamp                # after you reviewed the map
+node ../../bin/capisce.mjs timings              # write sample timings to .capisce/timings.json
 ```
 
-`make map`, `make map-serve`, `make map-check` and `make map-stamp` do the same.
+`make map`, `make map-serve`, `make map-check`, `make map-stamp` and `make map-timings` do the same.
+
+The timings are **sample data**: this app has no production, so `capisce/timings.mjs` makes the numbers up, the same ones on every run. Run the `timings` command, then press **Tab** on the served page to see them. A real project's source asks its tracing tool instead.
 
 The page, and the comments and notes left on it, are kept in `.capisce/`. This example ignores that whole folder in git. `node ../../bin/capisce.mjs comments` prints the comments that wait on a reply.
 

@@ -5,6 +5,7 @@
   import { notes } from "../state/notes.svelte";
   import { overlays } from "../state/overlays.svelte";
   import { set_commenting, set_noting } from "../state/side_panes";
+  import { set_timings_on, timings } from "../state/timings.svelte";
 
   const open_count = (list: { status: string }[]) => list.filter((each) => each.status === "open").length;
   const count_label = (count: number) => {
@@ -26,6 +27,11 @@
   </nav>
   {#if catalog.changes !== undefined}
     <button class="bar_button" data-changes onclick={open_changes}>Changes ({catalog.changes.ids.length})</button>
+  {/if}
+  {#if timings.available}
+    <button class="bar_button pane_button" class:on={timings.on} data-timings aria-pressed={timings.on} onclick={() => set_timings_on(!timings.on)}>
+      Timings<span class="key">Tab</span>
+    </button>
   {/if}
   {#if notes.available}
     <button class="bar_button pane_button" class:on={notes.on} data-notes onclick={() => set_noting(!notes.on)}>

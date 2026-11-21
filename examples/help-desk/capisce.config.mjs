@@ -10,6 +10,7 @@ export default {
   stamps: "capisce/stamps.json",
   sources: ["cmd", "internal", "web"],
   commands: { stamp: "make map-stamp" },
+  timings: "./capisce/timings.mjs",
   extract: [
     { use: "./capisce/models.mjs", files: "internal/*/models.go" },
     {

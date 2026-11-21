@@ -9,6 +9,7 @@
   import NotesPane from "./components/notes_pane.svelte";
   import RealCodeModal from "./components/real_code_modal.svelte";
   import SelectionComment from "./components/selection_comment.svelte";
+  import TimingLine from "./components/timing_line.svelte";
   import SymbolPage from "./components/symbol_page.svelte";
   import Tooltip from "./components/tooltip.svelte";
   import TopBar from "./components/top_bar.svelte";
@@ -20,6 +21,7 @@
   import { load_notes, notes, save_note } from "./state/notes.svelte";
   import { close_overlays, overlays } from "./state/overlays.svelte";
   import { set_commenting, set_noting } from "./state/side_panes";
+  import { load_timings, set_timings_on, timings } from "./state/timings.svelte";
 
   let { has_data }: { has_data: boolean } = $props();
 
@@ -28,11 +30,13 @@
   const domain = $derived(domain_of_page(entry.id));
   const code = $derived(shown_code(entry));
   const has_trace = $derived(symbol !== undefined && symbol.kind !== "model" && steps_of(symbol).length > 0);
+  const shows_timing = $derived(timings.on && symbol?.kind === "route");
   const real_code_symbol = $derived(symbol_of(overlays.real_code_of));
 
   void load_comments();
   keep_comments_fresh();
   void load_notes();
+  void load_timings();
   if (catalog.changes !== undefined) {
     void go(CHANGES_PAGE);
   }
@@ -54,6 +58,11 @@
     const target = event.target;
     const typing = target instanceof Element && target.closest("textarea, input") !== null;
     const with_modifier = event.metaKey || event.ctrlKey || event.altKey;
+    if (event.key === "Tab" && !typing && !with_modifier && !event.shiftKey && timings.available) {
+      event.preventDefault();
+      set_timings_on(!timings.on);
+      return;
+    }
     if (typing && event.key === "Enter" && (event.metaKey || event.ctrlKey)) {
       if (target.closest("[data-note-input]") !== null) {
         void save_note();
@@ -99,6 +108,7 @@
       </div>
       {#if has_trace && symbol !== undefined}
         <section class="trace_panel" data-panel="flow">
+          {#if shows_timing}<TimingLine id={symbol.id} />{/if}
           <TracePanel {symbol} {entry} />
           {#if comments.on}<AnnotationLayer panel="flow" />{/if}
         </section>
@@ -111,6 +121,7 @@
         {:else if domain !== undefined}
           <DomainPage {domain} focus={entry.focus} />
         {:else if code !== undefined}
+          {#if shows_timing && !has_trace && symbol !== undefined}<TimingLine id={symbol.id} />{/if}
           <SymbolPage symbol={code.symbol} selected_step={code.step} trace_root={code.trace_root} focus={entry.focus} />
         {/if}
         {#if comments.on}<AnnotationLayer panel="code" />{/if}

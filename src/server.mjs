@@ -1,6 +1,6 @@
 // Serves a built map, the comments left on it, and the notes kept about it.
-// Everything lives in the state folder, given as the first argument: index.html, comments.json, notes.json
-// and comments/screenshots/.
+// Everything lives in the state folder, given as the first argument: index.html, comments.json, notes.json,
+// timings.json and comments/screenshots/.
 import { randomUUID } from "node:crypto";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { createServer } from "node:http";
@@ -19,6 +19,7 @@ import {
   write_comments as write_comments_in,
   write_list,
 } from "./comments.mjs";
+import { read_timings } from "./timings.mjs";
 
 const root = resolve(process.argv[2] ?? ".capisce");
 const notes_path = notes_path_in(root);
@@ -234,6 +235,9 @@ const server = createServer(async (request, response) => {
     const notes_match = /^\/api\/notes(?:\/([\w-]+))?$/.exec(path);
     if (notes_match !== null) {
       return await handle_notes(request, response, notes_match[1]);
+    }
+    if (request.method === "GET" && path === "/api/timings") {
+      return send(response, 200, read_timings(root));
     }
     if (request.method === "GET" && path === "/") {
       return send(response, 200, readFileSync(join(root, "index.html")), "text/html; charset=utf-8");

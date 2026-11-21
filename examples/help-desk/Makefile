@@ -18,4 +18,7 @@ map-check:
 map-stamp:
 	$(CAPISCE) stamp
 
-.PHONY: run test map map-serve map-check map-stamp
+map-timings:
+	$(CAPISCE) timings
+
+.PHONY: run test map map-serve map-check map-stamp map-timings

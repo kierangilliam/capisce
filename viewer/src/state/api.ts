@@ -2,7 +2,7 @@ const api_base = `${location.pathname.replace(/\/?$/, "/")}api`;
 
 /** Calls the page's own server. Throws when there is none, or when it refuses. */
 export async function api_request<Result>(
-  collection: "comments" | "notes",
+  collection: "comments" | "notes" | "timings",
   method: "GET" | "POST" | "PATCH" | "DELETE",
   id?: string,
   body?: unknown,

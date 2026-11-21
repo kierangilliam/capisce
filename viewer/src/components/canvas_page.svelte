@@ -9,7 +9,7 @@
   const subject = project_name() || "this codebase";
 </script>
 
-<div class="page">
+<div class="page canvas_page">
   <div>
     <div class="panel_label">{project_name()}</div>
     <div class="page_name">Domains</div>

@@ -1,7 +1,7 @@
 // Builds what the site serves beside its own page, from the capisce command line and the two examples:
 //   public/demo/<example>/index.html   each example's page, exactly as `capisce build` writes it
 //   public/frames/<name>.html          the same page with a stand-in for the comments server, for the figures
-//   src/generated/side_by_side.json    one function's pseudo-code and its real code, for the first code block
+//   src/generated/oxide-lite.json      the oxide-lite map, which vite.config.ts renders the first code block from
 import { execFileSync } from "node:child_process";
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
@@ -16,7 +16,7 @@ const generated = join(website, "src", "generated");
 const DATA_SLOT = "/*__CAPISCE_DATA__*/null";
 const EXAMPLES = ["oxide-lite", "help-desk"];
 const FRAMED = ["oxide-lite"];
-const SIDE_BY_SIDE = "sessions.login";
+const CODE_BLOCK_MAP = "oxide-lite";
 
 if (!existsSync(viewer_page)) {
   console.error(`The capisce page has not been built yet, so the site cannot be built.\n\n  Run "pnpm install && pnpm build" in ${repo}, then run this again.`);
@@ -33,14 +33,14 @@ const with_shim = (page) => page.replace("<head>", () => `<head>\n<script>${shim
 const with_data = (data) =>
   readFileSync(viewer_page, "utf8").replace(DATA_SLOT, () => JSON.stringify(data).replace(/</g, "\\u003c"));
 
-const maps = {};
 for (const example of EXAMPLES) {
   const root = join(repo, "examples", example);
   const page = join(public_folder, "demo", example, "index.html");
-  const data = join(generated, `${example}.json`);
-  execFileSync(process.execPath, [cli, "build", page, "--json", data, "--root", root], { stdio: "inherit" });
-  maps[example] = JSON.parse(readFileSync(data, "utf8"));
-  rmSync(data);
+  const args = ["build", page, "--root", root];
+  if (example === CODE_BLOCK_MAP) {
+    args.push("--json", join(generated, `${example}.json`));
+  }
+  execFileSync(process.execPath, [cli, ...args], { stdio: "inherit" });
   if (FRAMED.includes(example)) {
     writeFileSync(join(public_folder, "frames", `${example}.html`), with_shim(readFileSync(page, "utf8")));
   }
@@ -49,11 +49,4 @@ for (const example of EXAMPLES) {
 const diff_data = JSON.parse(readFileSync(join(website, "src", "data", "oxide-lite-diff.json"), "utf8"));
 writeFileSync(join(public_folder, "frames", "oxide-lite-diff.html"), with_shim(with_data(diff_data)));
 
-const symbol = maps["oxide-lite"].symbols.find((each) => each.id === SIDE_BY_SIDE);
-if (symbol === undefined) {
-  console.error(`The oxide-lite map has no "${SIDE_BY_SIDE}" any more. Pick another function in scripts/build_pages.mjs.`);
-  process.exit(1);
-}
-const side_by_side = { id: symbol.id, pseudo: symbol.pseudo.join("\n"), code: symbol.src.code, path: symbol.src.path };
-writeFileSync(join(generated, "side_by_side.json"), `${JSON.stringify(side_by_side, null, 2)}\n`);
-console.log("Built the demo pages, the figure frames and the side-by-side code.");
+console.log("Built the demo pages, the figure frames and the map for the first code block.");

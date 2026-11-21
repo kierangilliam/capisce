@@ -88,3 +88,34 @@
   .stage_label.added, .stage_label.changed, .stage_label.removed { padding-left: 14px; }
   .peek { left: 12px; width: calc(100cqw - 24px); margin-left: 12px; }
 }
+@media (max-width: 600px) {
+  .code_header { padding-right: 62px; }
+  .capisce .code_toggle { top: -6px; min-width: 40px; min-height: 36px; padding: 0 9px; font-size: 12.5px; text-align: center; }
+  .lines:not(.prose), .real_code {
+    --lines_width: 100cqw;
+    min-width: 0; overflow-x: auto; overscroll-behavior-x: contain;
+    background:
+      linear-gradient(to right, var(--cp_background) 40%, transparent) left center / 26px 100% no-repeat local,
+      linear-gradient(to left, var(--cp_background) 40%, transparent) right center / 26px 100% no-repeat local,
+      var(--cp_more_left), var(--cp_more_right);
+  }
+  .lines:not(.prose) { display: grid; grid-template-columns: minmax(max-content, 1fr); }
+  .stage_label {
+    width: var(--lines_width, 100cqw); max-width: none; padding: 0 14px;
+  }
+  .lines:not(.prose) > .stage > .stage_label { margin-top: 7px; padding-top: 6px; padding-bottom: 1px; border-top: 1px solid var(--cp_border); line-height: 17px; }
+  .lines.prose > .stage > .stage_label { padding-bottom: 1px; }
+  .stage.selected { background: var(--cp_soft); box-shadow: inset 3px 0 0 var(--cp_foreground); }
+  .stage.selected > .stage_label { text-decoration: none; }
+  .stage.selected > .stage_body { background: none; }
+  .lines:not(.prose) > .stage > .stage_label.added, .lines:not(.prose) > .stage > .stage_label.changed, .lines:not(.prose) > .stage > .stage_label.removed { padding-left: 14px; }
+  .lines.prose > .stage > .stage_body > .line { padding-left: 14px; }
+  .peek { --lines_width: calc(100cqw - 18px); left: 8px; width: calc(100cqw - 16px); margin: 12px 0 12px 8px; }
+  .peek .called_name_row { position: static; height: auto; justify-content: stretch; pointer-events: auto; border-bottom: 1px solid var(--cp_border); }
+  .peek .called_name { flex: 1; max-width: none; justify-content: space-between; align-items: center; padding: 0 0 0 10px; border: 0; background: none; font-size: 12.5px; }
+  .capisce .peek .peek_open { padding: 10px 10px; font-size: 12px; }
+  .peek_scroll { padding-top: 4px; overscroll-behavior-x: contain; }
+  .peek_doc { width: var(--lines_width); max-width: none; padding: 6px 10px 2px; }
+  .peek .lines { padding: 4px 0 8px; overflow-x: visible; background: none; }
+  .line_number { position: sticky; left: 0; background: var(--cp_background); padding: 0 8px 0 10px; }
+}

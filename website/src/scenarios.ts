@@ -5,9 +5,9 @@ export type Scenario = {
   height: number;
   /** static: set up and rest. once: play the first time it is mostly in view. loop: play over and over while in view. */
   mode: "static" | "once" | "loop";
-  /** Where to look when a narrow screen shows only part of the frame and the cursor is not moving. */
-  focus_x: number;
   rest?: Point;
+  /** What differs on a narrow screen, where the frame is as wide as a phone and the page stacks its panels. */
+  narrow?: { width?: number; height?: number; rest?: Point };
   setup: (stage: Stage) => Promise<void>;
   play?: (stage: Stage) => Promise<void>;
 };
@@ -39,13 +39,53 @@ async function open_function(stage: Stage): Promise<void> {
 
 const trace_row = (index: number) => `.trace_row[data-trace="${index}"] .trace_hit`;
 const ROW_STEPS = [2, 4, 5];
+const WIDE_ROW_X = 300;
+const NARROW_ROW_ROOM = { above: 110, beside: 48 };
+const REAL_CODE_REST = { x: 300, y: 470 };
+/** Wide enough for two columns of the canvas, and no wider: the frame's edge falls between boxes. */
+const NARROW_CANVAS_WIDTH = 508;
+
+/** Where the cursor clicks a row of the trace. In the narrow frame the row's words are scrolled into sight first. */
+async function row_click_point(stage: Stage, index: number): Promise<{ hit: HTMLElement; at: Point }> {
+  const hit = await stage.find(trace_row(index));
+  if (!stage.narrow) {
+    return { hit, at: { x: WIDE_ROW_X, y: stage.center_of(hit).y } };
+  }
+  const words = await stage.find(`.trace_row[data-trace="${index}"] .trace_label`);
+  const panel = await stage.find('[data-panel="flow"]');
+  const frame = panel.getBoundingClientRect();
+  const box = words.getBoundingClientRect();
+  let behavior: ScrollBehavior = "smooth";
+  if (stage.instant) {
+    behavior = "instant";
+  }
+  panel.scrollTo({
+    top: Math.max(0, panel.scrollTop + box.top - frame.top - NARROW_ROW_ROOM.above),
+    left: Math.max(0, panel.scrollLeft + box.left - frame.left - NARROW_ROW_ROOM.beside),
+    behavior,
+  });
+  await stage.wait(500);
+  return { hit, at: { x: words.getBoundingClientRect().left + 24, y: stage.center_of(hit).y } };
+}
+
+/** In the narrow frame the code is below the trace, so the step just picked is scrolled into sight. */
+async function show_picked_code(stage: Stage): Promise<void> {
+  if (stage.narrow) {
+    const code = await stage.find('[data-panel="code"]');
+    code.scrollTop = 0;
+    const picked = code.querySelector(".stage.selected");
+    if (picked !== null) {
+      stage.bring_into_panel(picked);
+    }
+  }
+}
 
 export const SCENARIOS: Record<string, Scenario> = {
   domains: {
     frame: MAP,
     height: 520,
     mode: "static",
-    focus_x: 640,
+    narrow: { width: NARROW_CANVAS_WIDTH, height: 540 },
     setup: async (stage) => {
       await stage.find(".canvas .domain_box");
     },
@@ -55,8 +95,8 @@ export const SCENARIOS: Record<string, Scenario> = {
     frame: MAP,
     height: 600,
     mode: "once",
-    focus_x: 640,
     rest: { x: 980, y: 560 },
+    narrow: { width: NARROW_CANVAS_WIDTH, height: 580, rest: { x: 440, y: 520 } },
     setup: async (stage) => {
       await stage.find(".canvas .domain_box");
     },
@@ -72,14 +112,14 @@ export const SCENARIOS: Record<string, Scenario> = {
     frame: MAP,
     height: 640,
     mode: "once",
-    focus_x: 640,
     rest: { x: 700, y: 560 },
+    narrow: { height: 660, rest: { x: 350, y: 560 } },
     setup: open_domain,
     play: async (stage) => {
       await stage.wait(500);
       await stage.click(await stage.find(`.flow_card[data-go="${FLOW}"]`), { x: -40, y: 0 });
       await stage.wait(500);
-      await stage.move_to({ x: 330, y: 300 });
+      await stage.move_to(stage.place({ x: 330, y: 300 }, { x: 330, y: 230 }));
     },
   },
 
@@ -87,18 +127,20 @@ export const SCENARIOS: Record<string, Scenario> = {
     frame: MAP,
     height: 640,
     mode: "loop",
-    focus_x: 520,
+    narrow: { height: 680 },
     setup: async (stage) => {
       await open_flow(stage);
       await click_now(stage, trace_row(ROW_STEPS[0] ?? 0));
-      stage.view.cursor = { x: 300, y: stage.center_of(await stage.find(trace_row(ROW_STEPS[0] ?? 0))).y };
+      await show_picked_code(stage);
+      stage.view.cursor = (await row_click_point(stage, ROW_STEPS[0] ?? 0)).at;
       stage.view.cursor_shown = true;
     },
     play: async (stage) => {
       for (const row of [...ROW_STEPS.slice(1), ROW_STEPS[0] ?? 0]) {
         await stage.wait(2600);
-        const hit = await stage.find(trace_row(row));
-        await stage.click_at(hit, { x: 300, y: stage.center_of(hit).y });
+        const { hit, at } = await row_click_point(stage, row);
+        await stage.click_at(hit, at);
+        await show_picked_code(stage);
       }
     },
   },
@@ -107,21 +149,20 @@ export const SCENARIOS: Record<string, Scenario> = {
     frame: MAP,
     height: 640,
     mode: "loop",
-    focus_x: 900,
     setup: async (stage) => {
       await open_function(stage);
-      stage.view.cursor = { x: 980, y: 300 };
+      stage.view.cursor = stage.place({ x: 980, y: 300 }, REAL_CODE_REST);
       stage.view.cursor_shown = true;
     },
     play: async (stage) => {
       await stage.wait(1800);
       await stage.click(await stage.find("[data-real-toggle]"));
       await stage.wait(900);
-      await stage.move_to({ x: 980, y: 300 });
+      await stage.move_to(stage.place({ x: 980, y: 300 }, REAL_CODE_REST));
       await stage.wait(3200);
       await stage.click(await stage.find("[data-real-toggle]"));
       await stage.wait(900);
-      await stage.move_to({ x: 980, y: 300 });
+      await stage.move_to(stage.place({ x: 980, y: 300 }, REAL_CODE_REST));
     },
   },
 
@@ -129,8 +170,8 @@ export const SCENARIOS: Record<string, Scenario> = {
     frame: MAP,
     height: 640,
     mode: "once",
-    focus_x: 860,
     rest: { x: 1000, y: 420 },
+    narrow: { height: 660, rest: { x: 340, y: 560 } },
     setup: open_function,
     play: async (stage) => {
       await stage.wait(500);
@@ -142,7 +183,7 @@ export const SCENARIOS: Record<string, Scenario> = {
       await stage.wait(500);
       await stage.click(await stage.find("[data-draft-save]"));
       await stage.wait(300);
-      await stage.move_to({ x: 760, y: 380 });
+      await stage.move_to(stage.place({ x: 760, y: 380 }, { x: 340, y: 600 }));
     },
   },
 
@@ -150,22 +191,34 @@ export const SCENARIOS: Record<string, Scenario> = {
     frame: MAP,
     height: 640,
     mode: "once",
-    focus_x: 500,
     rest: { x: 560, y: 120 },
+    narrow: { height: 700, rest: { x: 340, y: 150 } },
     setup: async (stage) => {
       await open_flow(stage);
-      stage.view.cursor = { x: 620, y: 260 };
+      stage.view.cursor = stage.place({ x: 620, y: 260 }, { x: 340, y: 150 });
     },
     play: async (stage) => {
       await stage.wait(600);
       await stage.press_key("c");
       await stage.wait(300);
-      const title = (await stage.find('.code_panel .stage_label[data-title="The API checks the request"] .stage_title')).getBoundingClientRect();
+      const title_element = await stage.find('.code_panel .stage_label[data-title="The API checks the request"] .stage_title');
+      if (stage.narrow) {
+        stage.bring_into_panel(title_element);
+      }
+      const title = title_element.getBoundingClientRect();
       await stage.click_at(await stage.find('[data-layer="code"]'), { x: title.right + 14, y: title.top + title.height / 2 });
       await stage.wait(400);
       await stage.type(await stage.find<HTMLTextAreaElement>("[data-draft-input]"), NOTE_ON_PIN);
       await stage.wait(500);
-      const row = (await stage.find('.trace_row[data-trace="4"] .trace_note')).getBoundingClientRect();
+      const note = await stage.find('.trace_row[data-trace="4"] .trace_note');
+      if (stage.narrow) {
+        stage.bring_into_panel(note);
+        const flow = await stage.find('[data-panel="flow"]');
+        const flow_box = flow.getBoundingClientRect();
+        const note_box = note.getBoundingClientRect();
+        flow.scrollLeft += note_box.left + note_box.width / 2 - (flow_box.left + flow_box.width / 2);
+      }
+      const row = note.getBoundingClientRect();
       const center = { x: (row.left + row.right) / 2, y: row.top + row.height / 2 };
       const circle: Point[] = [];
       for (let turn = 0; turn <= 44; turn += 1) {
@@ -176,7 +229,7 @@ export const SCENARIOS: Record<string, Scenario> = {
       await stage.wait(400);
       await stage.click(await stage.find("[data-draft-save]"));
       await stage.wait(300);
-      await stage.move_to({ x: 560, y: 120 });
+      await stage.move_to(stage.place({ x: 560, y: 120 }, { x: 340, y: 150 }));
     },
   },
 
@@ -184,8 +237,8 @@ export const SCENARIOS: Record<string, Scenario> = {
     frame: DIFF_MAP,
     height: 640,
     mode: "once",
-    focus_x: 520,
     rest: { x: 760, y: 200 },
+    narrow: { height: 660, rest: { x: 350, y: 150 } },
     setup: async (stage) => {
       await stage.find(".change_name");
     },
@@ -193,7 +246,7 @@ export const SCENARIOS: Record<string, Scenario> = {
       await stage.wait(900);
       await stage.click(await stage.find('.chip[data-part="step:Refuse what the rack has no room for"]'));
       await stage.wait(500);
-      await stage.move_to({ x: 1100, y: 200 });
+      await stage.move_to(stage.place({ x: 1100, y: 200 }, { x: 380, y: 300 }));
     },
   },
 
@@ -201,7 +254,6 @@ export const SCENARIOS: Record<string, Scenario> = {
     frame: MAP,
     height: 560,
     mode: "once",
-    focus_x: 860,
     setup: open_function,
     play: async (stage) => {
       await stage.wait(500);

@@ -1,4 +1,5 @@
 import { mount } from "svelte";
+import { start_code_symbols } from "./code_symbols";
 import Figure from "./figure.svelte";
 import { SCENARIOS } from "./scenarios";
 import "./site.css";
@@ -11,6 +12,8 @@ for (const figure of document.querySelectorAll<HTMLElement>("[data-figure]")) {
   figure.querySelector(".figure_alt")?.classList.add("hidden");
   mount(Figure, { target: figure, props: { scenario } });
 }
+
+start_code_symbols();
 
 const first_capisce = document.querySelector("#first_capisce");
 const repo_link = document.querySelector(".repo_link");

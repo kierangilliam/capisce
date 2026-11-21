@@ -109,6 +109,10 @@ pre code { font: inherit; }
 }
 
 .side_by_side {
+  --code_ink: #111111;
+  --code_muted: #6f6f6f;
+  --code_accent: #1d4ed8;
+  --code_string: color-mix(in srgb, var(--code_ink) 62%, var(--code_background));
   align-items: start;
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
@@ -116,6 +120,7 @@ pre code { font: inherit; }
   margin-top: 1em;
   margin-bottom: 1.4em;
 }
+.side_by_side.wide { width: min(1200px, calc(100vw - 32px)); }
 .code_column { min-width: 0; display: flex; flex-direction: column; }
 .code_label {
   font: 12px/1.4 var(--mono);
@@ -126,36 +131,56 @@ pre code { font: inherit; }
 .side_by_side pre {
   flex: 1;
   margin: 0;
+  color: var(--code_ink);
   font-size: 12px;
-  line-height: 1.5;
+  line-height: 1.6;
   white-space: pre-wrap;
   overflow-x: hidden;
 }
-.stages {
-  display: grid;
-  grid-template-columns: 150px max-content;
-  background: var(--code_background);
+.code_line { display: block; padding-left: 4ch; text-indent: -4ch; }
+
+/* The same marks as the capisce page: quiet keywords and comments, one accent for where a name lives, bold for the name being defined. */
+.side_by_side .keyword, .side_by_side .comment, .side_by_side .lifetime { color: var(--code_muted); }
+.side_by_side .comment, .side_by_side .lifetime { font-style: italic; }
+.side_by_side .string { color: var(--code_string); }
+.side_by_side .own_name { font-weight: 700; }
+.side_by_side .module, .side_by_side .type { color: var(--code_accent); }
+.side_by_side .macro, .side_by_side .attribute { font-style: italic; }
+.side_by_side .symbol { color: inherit; text-decoration: none; border-radius: 2px; cursor: pointer; }
+.side_by_side .symbol.model { font-weight: 700; }
+.side_by_side .symbol:hover, .side_by_side .symbol[aria-describedby] { text-decoration: underline; text-underline-offset: 2px; text-decoration-thickness: 1px; }
+.side_by_side .symbol:focus-visible { outline: 2px solid var(--code_ink); outline-offset: 2px; }
+
+.code_tooltip {
+  position: absolute;
+  z-index: 30;
+  width: 300px;
+  max-width: calc(100vw - 16px);
+  padding: 10px 12px;
+  background: #ffffff;
+  color: #111111;
+  border: 1px solid #111111;
+  border-radius: 4px;
+  box-shadow: 3px 3px 0 var(--rule);
+  font: 13px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+.code_tooltip[hidden] { display: none; }
+.tooltip_kind { font-size: 10.5px; letter-spacing: 0.08em; text-transform: uppercase; color: #6f6f6f; }
+.tooltip_name { font: 600 12px/1.4 var(--mono); overflow-wrap: anywhere; }
+.tooltip_doc { margin: 6px 0 0; }
+.tooltip_path { margin-top: 8px; font: 10.5px var(--mono); color: #6f6f6f; overflow-wrap: anywhere; }
+.tooltip_open {
+  display: inline-block;
+  margin-top: 10px;
+  padding: 2px 8px;
   border: 1px solid var(--rule);
   border-radius: 4px;
-  padding: 10px 0;
-  overflow-x: auto;
-}
-.stage_name {
-  padding: 1px 8px 6px 12px;
-  border-right: 1px solid var(--rule);
-  color: var(--muted);
-  font-size: 12px;
   line-height: 1.5;
+  text-decoration: none;
 }
-.side_by_side .stages pre {
-  border: 0; border-radius: 0; background: none; padding: 0 12px 6px 12px;
-  font-size: 11.5px; white-space: pre; overflow: visible;
-}
-.side_by_side .stages .code_line { padding-left: 0; text-indent: 0; }
-.side_by_side.wide { width: min(1200px, calc(100vw - 32px)); }
-.code_line { display: block; padding-left: 4ch; text-indent: -4ch; }
-.muted { color: var(--muted); }
-.step { color: var(--muted); font-style: italic; }
+.tooltip_open:hover, .tooltip_open:focus-visible { background: #111111; color: #ffffff; outline: none; }
+.tooltip_key { margin-left: 4px; font: 10.5px var(--mono); color: #6f6f6f; }
+.tooltip_open:hover .tooltip_key, .tooltip_open:focus-visible .tooltip_key { color: inherit; }
 
 .install { font-size: 13px; }
 
@@ -165,11 +190,30 @@ figure { margin: 1em 0 1.4em; }
   position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap;
 }
 
+@media (max-width: 1040px) {
+  /* Here the corner link sits over the figures, so it carries its own piece of paper. */
+  .repo_link {
+    top: max(8px, env(safe-area-inset-top, 0px));
+    right: max(6px, env(safe-area-inset-right, 0px));
+    width: 36px;
+    height: 36px;
+    padding: 6px;
+    border: 1px solid var(--rule);
+    border-radius: 50%;
+    background: var(--paper);
+    box-shadow: 0 1px 4px rgb(0 0 0 / 0.12);
+  }
+  .repo_link:hover { opacity: 1; }
+}
+
 @media (max-width: 760px) {
   body { font-size: 15px; }
-  .document { padding-top: 40px; }
-  .side_by_side { grid-template-columns: minmax(0, 1fr); }
-  .stages { grid-template-columns: 84px max-content; }
-  .side_by_side pre { font-size: 11.5px; white-space: pre; overflow-x: auto; }
+  .document { padding-top: 40px; padding-bottom: calc(96px + env(safe-area-inset-bottom, 0px)); }
+  .side_by_side { grid-template-columns: minmax(0, 1fr); gap: 14px; }
+  .side_by_side pre { white-space: pre; overflow-x: auto; overscroll-behavior-x: contain; padding: 10px 12px; }
   .code_line { padding-left: 0; text-indent: 0; }
+  .tooltip_open { padding: 7px 12px; }
+  .tooltip_key { display: none; }
+  .install { white-space: pre-wrap; overflow-wrap: anywhere; }
+  li { margin-bottom: 0.45em; }
 }

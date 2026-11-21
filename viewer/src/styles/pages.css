@@ -53,3 +53,15 @@
 .capisce .chip.warning { border-style: dashed; border-color: var(--cp_foreground); }
 .change_group { font-weight: 600; font-size: 14px; margin-top: 10px; }
 .empty_page { margin: auto; padding: 24px; max-width: 46ch; text-align: center; color: var(--cp_muted); }
+
+@media (max-width: 600px) {
+  .page { padding: 0 14px; }
+  .page.canvas_page { width: max-content; min-width: 100%; }
+  .page.canvas_page > :not(.canvas) { position: sticky; left: 14px; width: calc(100cqw - 28px); }
+  .capisce .flow_card { padding: 10px 12px; }
+  .capisce .model_box { padding: 9px 12px; }
+  .relation { padding: 7px 0; }
+  .capisce .chip { padding: 7px 12px; }
+  .change_parts { gap: 8px; }
+  .capisce .change_name { padding: 6px 0; }
+}

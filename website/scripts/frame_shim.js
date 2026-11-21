@@ -1,11 +1,17 @@
 // Put at the top of each figure's copy of the capisce page. It stands in for the server that `capisce serve`
 // runs, so the page turns its comments on, keeps what the figure saves in memory, and fills its frame.
+// In a narrow frame the page stacks its panels as it does on a phone; here each panel scrolls inside the frame.
 (() => {
   document.documentElement.dataset.theme = "light";
   const style = document.createElement("style");
   style.textContent = `
     html.own_page body { padding: 0 !important; }
-    html.own_page .capisce { height: 100vh !important; border-radius: 0; border: 0; }
+    html.own_page .capisce { height: 100vh !important; min-height: 0 !important; border-radius: 0 !important; border: 0 !important; }
+    @media (max-width: 600px) {
+      html.own_page .capisce .panels { display: grid; grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(0, 1fr); }
+      html.own_page .capisce.has_trace .panels { grid-template-rows: auto minmax(0, 1fr); }
+      html.own_page .capisce .trace_panel { max-height: 42vh; }
+    }
     ::selection { background: #b4d5fe; }
   `;
   document.head.append(style);

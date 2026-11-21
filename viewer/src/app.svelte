@@ -88,6 +88,7 @@
   class:has_trace
   class:menu_open={overlays.menu_open}
   class:commenting={comments.on}
+  class:drafting={comments.draft !== undefined}
   class:noting={notes.on}
   role="presentation"
   onclickcapture={close_what_was_clicked_away}

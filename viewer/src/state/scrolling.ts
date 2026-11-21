@@ -1,6 +1,7 @@
 import type { PanelName } from "../types";
 
 const PHONE_WIDTH = 600;
+const SIDE_ROOM = 48;
 
 export const panel_element = (panel: PanelName): HTMLElement | null =>
   document.querySelector<HTMLElement>(`[data-panel="${panel}"]`);
@@ -26,7 +27,26 @@ export function scroll_to_focus(): void {
   scroll_into_panel(panel_element("flow")?.querySelector(".trace_row.selected, .trace_row.changed"), 140);
 }
 
+/** Brings the selected row of the trace into sight, sideways too: on a narrow screen its lane may be off to the side. */
+function scroll_to_selected_row(): void {
+  const flow = panel_element("flow");
+  const row = flow?.querySelector(".trace_row.selected");
+  if (flow === null || row === null || row === undefined) {
+    return;
+  }
+  const frame = flow.getBoundingClientRect();
+  const box = row.getBoundingClientRect();
+  if (box.top < frame.top + 40 || box.bottom > frame.bottom) {
+    scroll_into_panel(row, 120);
+  }
+  const label = row.querySelector(".trace_note, .trace_label")?.getBoundingClientRect();
+  if (label !== undefined && (label.left < frame.left || label.right > frame.right)) {
+    flow.scrollLeft = Math.max(0, flow.scrollLeft + label.left - frame.left - SIDE_ROOM);
+  }
+}
+
 export function scroll_to_selected_stage(): void {
+  scroll_to_selected_row();
   if (window.innerWidth <= PHONE_WIDTH) {
     return;
   }
@@ -37,15 +57,6 @@ export function scroll_to_selected_stage(): void {
     const frame = code.getBoundingClientRect();
     if (box.top < frame.top || box.top > frame.bottom - 80) {
       scroll_into_panel(label, 60);
-    }
-  }
-  const row = panel_element("flow")?.querySelector(".trace_row.selected");
-  const flow = panel_element("flow");
-  if (row !== null && row !== undefined && flow !== null) {
-    const box = row.getBoundingClientRect();
-    const frame = flow.getBoundingClientRect();
-    if (box.top < frame.top + 40 || box.bottom > frame.bottom) {
-      scroll_into_panel(row, 120);
     }
   }
 }

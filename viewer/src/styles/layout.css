@@ -71,8 +71,27 @@ a.timing_line:hover { text-decoration: underline; text-underline-offset: 2px; }
 @media (max-width: 600px) {
   .capisce { height: auto; min-height: var(--cp_height, 0); }
   .capisce .panels { display: block; }
-  .trace_panel { border-right: 0; border-bottom: 1px solid var(--cp_border); max-height: 340px; }
-  .browse { bottom: auto; max-height: 520px; border-bottom: 1px solid var(--cp_border); }
-  .bar { flex-wrap: wrap; }
+  .trace_panel {
+    border-right: 0; border-bottom: 1px solid var(--cp_border); max-height: min(340px, 60vh);
+    overscroll-behavior-x: contain;
+    background:
+      linear-gradient(to right, var(--cp_sheet) 40%, transparent) left center / 26px 100% no-repeat local,
+      linear-gradient(to left, var(--cp_sheet) 40%, transparent) right center / 26px 100% no-repeat local,
+      var(--cp_more_left), var(--cp_more_right),
+      var(--cp_sheet_grain) repeat 0 0 / 320px 320px local, var(--cp_sheet);
+  }
+  .browse { bottom: auto; width: 100%; max-width: none; max-height: min(70vh, 560px); border-right: 0; border-bottom: 1px solid var(--cp_foreground); padding-bottom: 14px; }
+  .capisce.menu_open .browse { box-shadow: 0 4px 0 color-mix(in srgb, var(--cp_border) 50%, transparent); }
+  .capisce .browse_item, .browse_module summary { padding-top: 9px; padding-bottom: 9px; font-size: 12px; }
+  .capisce .browse_home { padding: 8px 12px; }
+  .bar { flex-wrap: wrap; padding: 8px 10px 4px; }
   .crumbs { order: 9; flex-basis: 100%; }
+  .capisce .crumb { padding: 9px 0; min-width: 2ch; }
+  .code_panel {
+    overscroll-behavior-x: contain;
+    background:
+      linear-gradient(to right, var(--cp_background) 40%, transparent) left center / 26px 100% no-repeat local,
+      linear-gradient(to left, var(--cp_background) 40%, transparent) right center / 26px 100% no-repeat local,
+      var(--cp_more_left), var(--cp_more_right), var(--cp_background);
+  }
 }

@@ -5,10 +5,14 @@
 
   let { scenario }: { scenario: Scenario } = $props();
 
-  const FRAME_WIDTH = 1200;
-  const SMALLEST_SCALE = 0.6;
+  const WIDE_FRAME_WIDTH = 1200;
+  /** Three lanes of a trace fit across this, with the frame's edge in the gap after the third. */
+  const NARROW_FRAME_WIDTH = 408;
+  const NARROW_BELOW = 720;
   const LOAD_AHEAD = "900px 0px";
   const MOSTLY_IN_VIEW = 0.6;
+  /** On a narrow screen the frame is as wide as a phone, so the page inside lays itself out as it does on one. */
+  const narrow = window.matchMedia(`(max-width: ${NARROW_BELOW - 1}px)`).matches;
   const reduced_motion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
   let host: HTMLDivElement | undefined = $state();
@@ -16,25 +20,22 @@
   let frame_url: string | undefined = $state();
   let frame: HTMLIFrameElement | undefined = $state();
   let ready = $state(false);
-  let moving = $state(false);
   const view: StageView = $state({ cursor: { x: 0, y: 0 }, cursor_shown: false, ripple: undefined, key: undefined });
   let stage: Stage | undefined;
 
-  const scale = $derived(Math.max(width / FRAME_WIDTH, SMALLEST_SCALE));
-  const crops = $derived(width / FRAME_WIDTH < SMALLEST_SCALE);
-  const look_at = $derived.by(() => {
-    if (view.cursor_shown) {
-      return view.cursor.x;
+  const frame_size = $derived.by(() => {
+    if (narrow) {
+      return { width: scenario.narrow?.width ?? NARROW_FRAME_WIDTH, height: scenario.narrow?.height ?? scenario.height };
     }
-    return scenario.focus_x;
+    return { width: WIDE_FRAME_WIDTH, height: scenario.height };
   });
-  const pan = $derived.by(() => {
-    if (!crops) {
-      return 0;
+  const rest = $derived.by(() => {
+    if (narrow) {
+      return scenario.narrow?.rest;
     }
-    const most = FRAME_WIDTH * scale - width;
-    return Math.max(0, Math.min(most, look_at * scale - width / 2));
+    return scenario.rest;
   });
+  const scale = $derived(width / frame_size.width);
 
   const observers: IntersectionObserver[] = [];
   onDestroy(() => {
@@ -75,7 +76,7 @@
     if (frame === undefined) {
       return;
     }
-    stage = new Stage(frame, view);
+    stage = new Stage(frame, view, narrow);
     const running = stage;
     try {
       await until_page_drawn(frame);
@@ -89,8 +90,8 @@
         ready = true;
         return;
       }
-      if (scenario.mode === "once" && scenario.rest !== undefined) {
-        view.cursor = { ...scenario.rest };
+      if (scenario.mode === "once" && rest !== undefined) {
+        view.cursor = { ...rest };
         view.cursor_shown = true;
       }
       ready = true;
@@ -99,9 +100,7 @@
           if (entry.intersectionRatio >= MOSTLY_IN_VIEW) {
             trigger.disconnect();
             running.instant = false;
-            moving = true;
             await scenario.play?.(running);
-            moving = false;
           }
         });
         return;
@@ -109,7 +108,6 @@
       running.set_visible(false);
       observe([0, 0.3], (entry) => running.set_visible(entry.intersectionRatio >= 0.3));
       running.instant = false;
-      moving = true;
       while (!running.stopped) {
         await scenario.play?.(running);
       }
@@ -138,13 +136,8 @@
   }
 </script>
 
-<div class="stage" class:ready class:moving bind:this={host} bind:clientWidth={width} style:height="{scenario.height * scale}px">
-  <div
-    class="stage_inner"
-    style:width="{FRAME_WIDTH}px"
-    style:height="{scenario.height}px"
-    style:transform="translateX({-pan}px) scale({scale})"
-  >
+<div class="stage" class:ready class:narrow bind:this={host} bind:clientWidth={width} style:height="{frame_size.height * scale}px">
+  <div class="stage_inner" style:width="{frame_size.width}px" style:height="{frame_size.height}px" style:transform="scale({scale})">
     {#if frame_url !== undefined}
       <iframe bind:this={frame} src={frame_url} title="" tabindex="-1" aria-hidden="true" onload={started}></iframe>
     {/if}
@@ -183,7 +176,7 @@
     transition: opacity 0.3s ease;
   }
   .stage.ready .stage_inner { opacity: 1; }
-  .stage.moving .stage_inner { transition: opacity 0.3s ease, transform 0.7s ease; }
+  .stage.narrow { max-width: 480px; margin: 0 auto; }
   iframe {
     display: block;
     width: 100%;

@@ -27,7 +27,16 @@ export class Stage {
   constructor(
     readonly frame: HTMLIFrameElement,
     readonly view: StageView,
+    readonly narrow: boolean,
   ) {}
+
+  /** One of two places: the first in the wide frame, the second in the narrow one, where the page stacks its panels. */
+  place(wide: Point, narrow: Point): Point {
+    if (this.narrow) {
+      return narrow;
+    }
+    return wide;
+  }
 
   get doc(): Document {
     const doc = this.frame.contentDocument;

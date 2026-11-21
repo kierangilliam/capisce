@@ -41,6 +41,7 @@
   --fallback_module: #8ab4ff;
   color-scheme: dark;
 }
+html.own_page { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
 html.own_page body {
   margin: 0;
   padding-block: 8px;
@@ -61,6 +62,8 @@ html.own_page body {
   border: 1px solid var(--cp_border);
   border-radius: var(--cp_radius);
   overflow: hidden;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
 }
 :where(.capisce) button { font: inherit; color: inherit; background: none; border: 0; padding: 0; cursor: pointer; text-align: left; }
 .capisce [hidden] { display: none; }
@@ -90,3 +93,18 @@ html.own_page body {
 .added { background: color-mix(in srgb, var(--cp_added) 14%, transparent); }
 .removed { background: color-mix(in srgb, var(--cp_removed) 10%, transparent); color: var(--cp_muted); text-decoration: line-through; }
 .focused { outline: 2px solid var(--cp_foreground); outline-offset: 2px; }
+
+@media (max-width: 600px) {
+  html.own_page body {
+    padding: 0 env(safe-area-inset-right, 0px) env(safe-area-inset-bottom, 0px) env(safe-area-inset-left, 0px);
+  }
+  html.own_page .capisce { border-width: 0 0 1px; border-radius: 0; min-height: calc(var(--cp_height, 0px) + 16px); }
+  .capisce {
+    --cp_edge_shadow: color-mix(in srgb, var(--cp_foreground) 22%, transparent);
+    --cp_more_left: linear-gradient(to right, var(--cp_edge_shadow), transparent) left center / 9px 100% no-repeat scroll;
+    --cp_more_right: linear-gradient(to left, var(--cp_edge_shadow), transparent) right center / 9px 100% no-repeat scroll;
+  }
+  .bar_button { display: inline-flex; align-items: center; min-height: 36px; padding: 0 12px; }
+  .bar_button .key { display: none; }
+  .text_button { padding: 8px 0; font-size: 12px; }
+}

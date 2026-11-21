@@ -1,6 +1,6 @@
 // Serves a built map, the comments left on it, and the notes kept about it.
-// Everything lives in the state folder, given as the first argument: index.html, comments.json, notes.json,
-// timings.json and comments/screenshots/.
+// It reads and writes the local files of the folder given as the first argument (.capisce unless told otherwise):
+// index.html, comments.json, notes.json, timings.json and comments/screenshots/. It serves nothing else from it.
 import { randomUUID } from "node:crypto";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { createServer } from "node:http";
@@ -19,10 +19,12 @@ import {
   write_comments as write_comments_in,
   write_list,
 } from "./comments.mjs";
+import { prepare_state } from "./state.mjs";
 import { read_timings } from "./timings.mjs";
 
 const root = resolve(process.argv[2] ?? ".capisce");
 const notes_path = notes_path_in(root);
+prepare_state(root);
 const port = Number(process.env.PORT ?? 8094);
 const MAX_BODY_CHARS = 2_000_000;
 const MAX_IMAGE_BYTES = 12_000_000;

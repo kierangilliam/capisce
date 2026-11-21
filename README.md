@@ -28,7 +28,7 @@ node /path/to/capisce/bin/capisce.mjs comments               # print the comment
 node /path/to/capisce/bin/capisce.mjs reply <id> "<text>" --done   # answer one in its thread
 ```
 
-A project needs a `capisce.config.mjs` at its root. The setup skill says how to write one. `check`, `stamp`, `comments` and `reply` need no install.
+A project needs a `capisce.config.mjs` at its root. The setup skill says how to write one. Everything else capisce keeps for the project is in one `.capisce` folder beside it, described below. `check`, `stamp`, `comments` and `reply` need no install.
 
 ## Comments
 
@@ -47,7 +47,7 @@ capisce does not know your tracing tool, so the project plugs in a source. Name 
 ```js
 export default {
   // …
-  timings: "./capisce/timings.mjs",
+  timings: "./.capisce/timings.mjs",
 };
 ```
 
@@ -76,28 +76,51 @@ export default async function timings({ ids, symbols }) {
 node /path/to/capisce/bin/capisce.mjs timings
 ```
 
-This runs the source and writes `timings.json` to the state folder, as `{ fetched_at, window, source, rows }`. It says how many endpoints got timings and how many have none. Run it again whenever you want fresher numbers: the served page reads the file on each load, with no rebuild. The numbers are not part of the built page, and `timings.json` should not be committed. A page with no timings shows no button.
+This runs the source and writes `.capisce/timings.json`, as `{ fetched_at, window, source, rows }`. It says how many endpoints got timings and how many have none. Run it again whenever you want fresher numbers: the served page reads the file on each load, with no rebuild. The numbers are not part of the built page, and git ignores `timings.json`. A page with no timings shows no button.
 
-`examples/help-desk/capisce/timings.mjs` is a small source to copy from. Its numbers are made up.
+`examples/help-desk/.capisce/timings.mjs` is a small source to copy from. Its numbers are made up.
 
 ## The `.capisce` folder
 
-Everything capisce keeps for a project that is not the map itself lives in one state folder: `.capisce` at the project's root.
+Everything capisce keeps for a project lives in one folder, `.capisce` at the project's root. The map in it is committed with the code. The rest is local to one checkout, and git ignores it.
 
 ```text
 .capisce/
-  index.html                 the built page
-  comments.json              the comments and their threads
-  notes.json                 the notes
-  timings.json               how long each endpoint takes, written by `capisce timings`
-  comments/screenshots/      the pictures attached to comments
+  maps/<domain>.map          committed   the pseudo-code, flows and glossary, one file for each domain
+  maps/shared.map            committed   names and terms every domain uses
+  domains.map                committed   the domains and how they relate
+  stamps.json                committed   what was reviewed, written by `capisce stamp`
+  models.mjs, timings.mjs    committed   the project's own extractors and source of timings, if it has any
+  .gitignore                 committed   written by capisce: it lists the local files below
+  index.html                 local       the built page
+  timings.json               local       how long each endpoint takes, written by `capisce timings`
+  comments.json              local       the comments and their threads
+  comments/screenshots/      local       the pictures attached to comments
+  notes.json                 local       the notes
 ```
 
-`--state <folder>` or the `CAPISCE_STATE` environment variable puts it somewhere else, for example to share one set of comments between several checkouts of a project.
+`capisce.config.mjs` stays at the project's root. Its `maps`, `domains` and `stamps` default to the paths above, so most configs leave them out.
 
-`index.html` is built and `timings.json` is fetched, so never commit them. Whether to commit the rest is up to the project: ignore all of `.capisce/` when comments are one person's review notes (the examples do this), or ignore only `.capisce/index.html` and `.capisce/timings.json` when the team wants to share them.
+**Changes come from the committed map.** `capisce build --base <git ref>` reads the map and the code as they were at that commit and compares them with the checkout, so the page shows what a branch changed. This works because the map files are in git beside the code.
 
-`node src/server.mjs <state folder>` serves a state folder without building, on `PORT`. Use it to keep a page up as a service and rebuild `index.html` beside it.
+**What git ignores.** The first time capisce writes into the folder, it adds `.capisce/.gitignore` if there is none. Commit that file. It ignores `*.html`, `timings.json`, `comments.json`, `comments/`, `notes.json` and `*.tmp`. The page is built and the timings are fetched, so they never belong in git. Comments and notes are ignored too: they are one reader's review conversation, they change with every reply, and they can hold screenshots. To share them through git, delete the `comments.json`, `comments/` and `notes.json` lines from `.capisce/.gitignore`. capisce never rewrites a `.gitignore` that is already there.
+
+**Local files somewhere else.** `--state <folder>` or the `CAPISCE_STATE` environment variable keeps the local files (the page, timings, comments and notes) in another folder, for example to share one set of comments between several checkouts of a project. The map is still read from `.capisce` in each checkout.
+
+### Moving an existing map
+
+Older projects keep the map in a `capisce/` folder, or wherever their config says. Those paths keep working. To move to the single folder:
+
+```sh
+mkdir -p .capisce
+git mv capisce/* .capisce/        # maps/, domains.map, stamps.json and your own modules
+```
+
+Then remove `maps`, `domains` and `stamps` from `capisce.config.mjs` (or point them at `.capisce/…`), and change paths such as `./capisce/models.mjs` to `./.capisce/models.mjs`. Take `.capisce/` out of the project's root `.gitignore`, run `capisce build`, and commit `.capisce/.gitignore` with the move. `capisce check` should pass with no new stamp: moving the map does not change the code it describes.
+
+A branch comparison still works across the move. When the commit named by `--base` has no map at today's paths, capisce looks where that commit's own `capisce.config.mjs` says, then in `capisce/`. To read those paths it loads that one file from the older commit. If the file cannot be loaded on its own, for example because it imports other modules, only the `capisce/` fallback is used.
+
+`node src/server.mjs <folder>` serves the page in a `.capisce` folder without building, on `PORT`. Use it to keep a page up as a service and rebuild `index.html` beside it. It serves the page, comments, notes and timings, and no other file of the folder.
 
 ## Skills
 

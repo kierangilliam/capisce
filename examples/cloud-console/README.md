@@ -15,10 +15,10 @@ The product is a small cloud console. People sign in, and manage projects, insta
   - `api_client.ts`: one function per endpoint.
   - `*_actions.ts`: what happens when a person does something, such as submitting the create-instance form.
 - `capisce.config.mjs`: what capisce reads from the code.
-- `capisce/domains.map`: the domains and how they relate.
-- `capisce/maps/`: the pseudo-code and flows, one file per domain.
-- `capisce/rust_models.mjs`: reads the Rust structs and enums in `api/src/db/models.rs` as models.
-- `capisce/console_actions.mjs`: makes every console action something the check requires pseudo-code for.
+- `.capisce/domains.map`: the domains and how they relate.
+- `.capisce/maps/`: the pseudo-code and flows, one file per domain.
+- `.capisce/rust_models.mjs`: reads the Rust structs and enums in `api/src/db/models.rs` as models.
+- `.capisce/console_actions.mjs`: makes every console action something the check requires pseudo-code for.
 
 ## The map
 
@@ -33,7 +33,7 @@ node ../../bin/capisce.mjs stamp             # record a review, once the map say
 
 `make map`, `make serve`, `make check` and `make stamp` do the same.
 
-The page, and the comments and notes left on it, are kept in `.capisce/`. This example ignores that whole folder in git. `node ../../bin/capisce.mjs comments` prints the comments that wait on a reply.
+The built page, and the comments and notes left on it, are local files in the same `.capisce/` folder. `.capisce/.gitignore`, written by capisce, keeps them out of git. `node ../../bin/capisce.mjs comments` prints the comments that wait on a reply.
 
 To see the check work, change a rule in `api/src/app/instances.rs` or `console/instance_actions.ts` and run the check again.
 

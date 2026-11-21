@@ -1,9 +1,10 @@
 // Timings say how long each endpoint takes where the project runs. A project plugs in its own source: a module
 // named by `timings` in its config, which asks its tracing tool and returns one row per endpoint. The rows are
-// kept in the state folder as timings.json. They are not part of the built page.
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+// kept in the .capisce folder as timings.json, a local file. They are not part of the built page.
+import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
+import { prepare_state } from "./state.mjs";
 
 export const timings_path = (state) => join(state, "timings.json");
 
@@ -65,7 +66,7 @@ export async function fetch_timings(root, config, map) {
 }
 
 export function write_timings(state, timings) {
-  mkdirSync(state, { recursive: true });
+  prepare_state(state);
   writeFileSync(timings_path(state), `${JSON.stringify(timings, null, 2)}\n`);
 }
 

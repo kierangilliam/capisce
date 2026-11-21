@@ -5,12 +5,14 @@ import { basename, extname, join, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 
 const DOC_CHARS = 320;
-const CONFIG_FILE = "capisce.config.mjs";
+export const CONFIG_FILE = "capisce.config.mjs";
+/** Where the map was kept before it moved into .capisce. A branch comparison still reads an older commit from here. */
+export const FORMER_MAP_PATHS = { maps: "capisce/maps", domains: "capisce/domains.map" };
 const DEFAULTS = {
   name: "",
-  maps: "capisce/maps",
-  domains: "capisce/domains.map",
-  stamps: "capisce/stamps.json",
+  maps: ".capisce/maps",
+  domains: ".capisce/domains.map",
+  stamps: ".capisce/stamps.json",
   sources: [],
   extract: [],
   commands: { stamp: "capisce stamp" },

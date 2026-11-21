@@ -1,9 +1,10 @@
-// Comments and notes, kept as files in the state folder (.capisce unless told otherwise):
+// Comments and notes, kept as local files in the .capisce folder (or the state folder, when one is named):
 //   comments.json, notes.json and comments/screenshots/ for the pictures attached to comments.
 // The server and the command line both read and write through here, so either can run without the other.
 import { randomUUID } from "node:crypto";
 import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
+import { prepare_state } from "./state.mjs";
 
 export const AUTHORS = ["reader", "agent"];
 export const STATUSES = ["open", "done"];
@@ -52,7 +53,10 @@ function with_thread(comment) {
 }
 
 export const read_comments = (state) => read_list(comments_path(state)).map(with_thread);
-export const write_comments = (state, comments) => write_list(comments_path(state), comments);
+export function write_comments(state, comments) {
+  prepare_state(state);
+  write_list(comments_path(state), comments);
+}
 
 /** True when the reader spoke last, so the thread is waiting on an answer. */
 export function awaits_reply(comment) {

@@ -5,14 +5,11 @@ const exported_and_not_a_constructor = "(?!New[A-Z])[A-Z]\\w*";
 
 export default {
   name: "Help desk",
-  maps: "capisce/maps",
-  domains: "capisce/domains.map",
-  stamps: "capisce/stamps.json",
   sources: ["cmd", "internal", "web"],
   commands: { stamp: "make map-stamp" },
-  timings: "./capisce/timings.mjs",
+  timings: "./.capisce/timings.mjs",
   extract: [
-    { use: "./capisce/models.mjs", files: "internal/*/models.go" },
+    { use: "./.capisce/models.mjs", files: "internal/*/models.go" },
     {
       use: "functions",
       module: "folder",

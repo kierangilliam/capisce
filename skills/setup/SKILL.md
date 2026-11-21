@@ -26,19 +26,17 @@ At the root of the project:
 ```js
 export default {
   name: "Shop",
-  maps: "capisce/maps",
-  domains: "capisce/domains.map",
-  stamps: "capisce/stamps.json",
   sources: ["server"],
   commands: { stamp: "npm run map:stamp" },
   extract: [
     { use: "functions", files: "server/services/*_service.ts" },
     { use: "routes", files: "server/routes/*.ts" },
-    { use: "./capisce/models.mjs", files: "server/models/*.ts" },
+    { use: "./.capisce/models.mjs", files: "server/models/*.ts" },
   ],
 };
 ```
 
+- The map lives in `.capisce` at the project's root: `.capisce/maps/` for the map files, `.capisce/domains.map` and `.capisce/stamps.json`. They are committed. Leave `maps`, `domains` and `stamps` out of the config unless the project must keep them elsewhere. Put your own extractors in `.capisce` too.
 - **`sources`** are the folders a branch comparison needs from an older commit.
 - **`commands.stamp`** is what the check tells people to run.
 - **`extract`** says what is read from the code. Each rule finds symbols in the files it names. `files` is one glob or a list (`*` stays in one folder, `**` crosses folders). `exclude` is a list of globs to leave out; tests are left out by default (`*.test.*`, `*.spec.*`, `*_test.*`, `test_*`), and giving `exclude` replaces that list, so repeat the test globs you still need.
@@ -67,7 +65,7 @@ Run `capisce build out.html --json out.json` and read the JSON to see what was f
 
 ## 3. Lay out the domains
 
-Write the domains file. A domain is a noun the business uses, with the code that belongs to it.
+Write the domains file, `.capisce/domains.map`. A domain is a noun the business uses, with the code that belongs to it.
 
 ```text
 === Orders
@@ -94,7 +92,7 @@ The build fails until every file the config reads, and every model, is in a doma
 
 ## 4. Write the map, one domain at a time
 
-Create `shared.map` in the maps folder first, for names every domain uses (the signed-in user, the helper that reads a request body, and so on). The first glossary goes there too: a `kind: term` block for each word of the business a new reader would have to ask about, such as "workspace" or "seat". The update skill has the format. Then, for each domain, write `<domain>.map`:
+Create `shared.map` in the maps folder (`.capisce/maps/`) first, for names every domain uses (the signed-in user, the helper that reads a request body, and so on). The first glossary goes there too: a `kind: term` block for each word of the business a new reader would have to ask about, such as "workspace" or "seat". The update skill has the format. Then, for each domain, write `<domain>.map`:
 
 - A block for everything the check requires.
 - Blocks for the functions those lean on, where the behavior is worth reading.
@@ -110,7 +108,8 @@ Write only what the code does. Each author should reread a few of their blocks a
 
 - `capisce build out.html` with every map file. Fix any id used twice and any stage that points at nothing.
 - Read the domain descriptions again against what the authors found, and correct them.
-- `capisce stamp`, then `capisce check` to confirm it passes. Commit the map files, the config and the stamps.
+- `capisce stamp`, then `capisce check` to confirm it passes. Commit the config and the `.capisce` folder: the map files, the domains, the stamps, your extractors and `.capisce/.gitignore`.
 - Add `capisce check` to the project's own checks, and tell contributors about the update skill (`capisce skill update`).
-- `capisce serve` builds the page and serves it with comments and notes, for review. The page, the comments and the notes are kept in `.capisce` at the project's root: add `.capisce/` to the project's ignore file, or only `.capisce/index.html` if the team wants to share comments.
+- `capisce serve` builds the page and serves it with comments and notes, for review. The page, the timings, the comments and the notes are local files in the same `.capisce` folder. capisce writes `.capisce/.gitignore` so git leaves them out: commit that file, and do not add `.capisce/` to the project's own ignore file, or the map will not be committed. To share comments and notes through git, delete their three lines from `.capisce/.gitignore`.
+- A branch comparison (`capisce build --base <git ref>`) reads the committed map of the older commit, so it only shows changes once the map is in git.
 - Tell contributors about the address-comments skill (`capisce skill address-comments`): it is how an agent answers what a reader left on the page.

@@ -9,16 +9,18 @@
 // capisce timings                                                                  fetch how long each endpoint takes, from the project's source
 // capisce skill <name>                                                             print a skill: setup, update or address-comments
 // Every command reads capisce.config.mjs from --root <folder>, or from the current folder.
-// The built page, comments, notes and timings live in the state folder: .capisce in the root, or --state <folder>,
-// or CAPISCE_STATE.
+// The map (maps, domains, stamps) is committed in .capisce in the root, unless the config names other paths.
+// The built page, comments, notes and timings are local files in that same folder, which capisce tells git to
+// ignore. --state <folder> or CAPISCE_STATE keeps the local files somewhere else.
 import { execFileSync, spawn } from "node:child_process";
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 import { add_reply, awaits_reply, comment_text, read_comments } from "../src/comments.mjs";
-import { build_map, load_config } from "../src/engine.mjs";
+import { CONFIG_FILE, FORMER_MAP_PATHS, build_map, load_config } from "../src/engine.mjs";
 import { mark_changes, review_needed, stamped } from "../src/review.mjs";
+import { prepare_state } from "../src/state.mjs";
 import { fetch_timings, timings_path, write_timings } from "../src/timings.mjs";
 
 const home = join(dirname(fileURLToPath(import.meta.url)), "..");
@@ -52,30 +54,52 @@ const all = flag("--all");
 const done = flag("--done");
 const [command, target, ...rest] = args;
 
-/** The map as it was at `ref`, read with today's config. */
+/** The `maps` and `domains` paths that the config of the commit at `ref` names, or nothing when it cannot be read. */
+async function config_paths_at(show, folder) {
+  try {
+    const path = join(folder, CONFIG_FILE);
+    writeFileSync(path, show(CONFIG_FILE));
+    const config = (await import(pathToFileURL(path).href)).default;
+    return { maps: config.maps, domains: config.domains };
+  } catch {
+    return {};
+  }
+}
+
+/**
+ * The map as it was at `ref`, read with today's config. A commit from before the map moved keeps it somewhere else,
+ * so each of `maps` and `domains` is looked for in three places: where today's config says, where that commit's own
+ * config says, and where capisce kept it by default before the .capisce folder.
+ */
 async function map_at(ref, config) {
   const folder = mkdtempSync(join(tmpdir(), "capisce_base_"));
   try {
     const git = (...git_args) => execFileSync("git", git_args, { cwd: root, encoding: "utf8" }).trim();
-    // The project may sit in a folder of a larger repository: read that folder of the older commit.
-    const folder_in_repo = git("rev-parse", "--show-prefix").replace(/\/$/, "");
-    let tree = ref;
-    let within = "";
-    if (folder_in_repo !== "") {
-      tree = `${ref}:${folder_in_repo}`;
-      within = `${folder_in_repo}/`;
-    }
-    const paths = [...config.sources, config.maps, config.domains].filter((path) => {
+    // The project may sit in a folder of a larger repository. git archive, run in that folder, reads only it.
+    const within = git("rev-parse", "--show-prefix");
+    const is_at_ref = (path) => {
       try {
         execFileSync("git", ["cat-file", "-e", `${ref}:${within}${path}`], { cwd: root, stdio: "ignore" });
         return true;
       } catch {
         return false;
       }
-    });
-    const archive = execFileSync("git", ["archive", tree, ...paths], { cwd: root, maxBuffer: 1 << 30 });
+    };
+    const base_config = { ...config };
+    if (!is_at_ref(config.maps) || !is_at_ref(config.domains)) {
+      const former = [await config_paths_at((path) => git("show", `${ref}:${within}${path}`), folder), FORMER_MAP_PATHS];
+      for (const key of ["maps", "domains"]) {
+        const places = [config[key], ...former.map((paths) => paths[key])];
+        base_config[key] = places.find((path) => typeof path === "string" && is_at_ref(path)) ?? config[key];
+        if (base_config[key] !== config[key]) {
+          console.log(`At ${ref} the ${key} are in ${base_config[key]}: comparing with those.`);
+        }
+      }
+    }
+    const paths = [...config.sources, base_config.maps, base_config.domains].filter(is_at_ref);
+    const archive = execFileSync("git", ["archive", ref, ...paths], { cwd: root, maxBuffer: 1 << 30 });
     execFileSync("tar", ["-x", "-C", folder], { input: archive });
-    return await build_map(folder, config, { config_root: root, strict: false });
+    return await build_map(folder, base_config, { config_root: root, strict: false });
   } finally {
     rmSync(folder, { recursive: true, force: true });
   }
@@ -177,6 +201,9 @@ async function run() {
     out_path = join(state, "index.html");
   }
   mkdirSync(dirname(out_path), { recursive: true });
+  if (dirname(out_path) === state) {
+    prepare_state(state);
+  }
   writeFileSync(out_path, readFileSync(VIEWER, "utf8").replace(DATA_SLOT, () => data.replace(/</g, "\\u003c")));
   console.log(`${head.symbols.length} symbols, ${head.domains.length} domains -> ${out_path}`);
   if (serving) {

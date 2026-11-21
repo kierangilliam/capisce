@@ -5,16 +5,17 @@ description: This updates capisce's state by writing pseudo-code and updating th
 
 # Update the map
 
-A capisce map is one page for reading a codebase at the level of business behavior. Models, endpoints and functions are read from the code. People and agents write only the pseudo-code, the flows and the glossary, in the map files. `capisce.config.mjs` at the root of the project says where those files are and what is read from the code.
+A capisce map is one page for reading a codebase at the level of business behavior. Models, endpoints and functions are read from the code. People and agents write only the pseudo-code, the flows and the glossary, in the map files. Those live in `.capisce` at the root of the project and are committed with the code: `.capisce/maps/<domain>.map`, `.capisce/domains.map` and `.capisce/stamps.json`. `capisce.config.mjs` at the root says what is read from the code, and names other paths if the project keeps its map elsewhere.
 
 Run capisce the way the project wraps it (look for a package script, a Makefile target or a script that calls it). If there is none, clone the capisce repository and run `node <capisce>/bin/capisce.mjs <command>` from the project's root. `build` and `serve` also need the page built once: `pnpm install && pnpm build` in the capisce folder. `capisce skill <name>` prints any of the skills named here.
 
 - `capisce check` names what needs an update. It fails when mapped code changed, when code that must be mapped has no pseudo-code, and when a stamp is out of date.
 - `capisce stamp` records that you reviewed the map against the code. Run it last, once the map says what the code does.
 - `capisce build <out.html> --only <map file name>` builds from one map file and `shared.map` only. It fails on a `src:` line that matches nothing and on a step that points at something that is not there.
-- `capisce build <out.html> --base <git ref>` builds the page with what changed since that commit.
+- `capisce build <out.html> --base <git ref>` builds the page with what changed since that commit. It compares against the map committed there, so commit your map changes with the code they describe.
 - `capisce build` with no file writes the page to `.capisce/index.html`, and `capisce serve` builds it there and serves it with comments and notes.
-- `capisce timings` fetches how long each endpoint takes, when the project's config names a source of `timings`. The served page shows them when a reader presses Tab. The numbers are kept in the state folder and never committed. After you rename or add an endpoint, check that the project's source still returns the map's ids.
+- `capisce timings` fetches how long each endpoint takes, when the project's config names a source of `timings`. The served page shows them when a reader presses Tab. The numbers are a local file, `.capisce/timings.json`, which git ignores. After you rename or add an endpoint, check that the project's source still returns the map's ids.
+- The page, timings, comments and notes are local files in `.capisce`, listed in `.capisce/.gitignore`. Never commit them, and never add `.capisce/` itself to an ignore file.
 - `capisce comments` prints what readers left on the page that waits on a reply. The address-comments skill (`capisce skill address-comments`) says how to answer.
 
 ## When the check fails

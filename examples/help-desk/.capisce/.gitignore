@@ -1,0 +1,8 @@
+# Written by capisce. The map in this folder is committed. These files are local to one checkout.
+# To share comments and notes through git, delete the lines comments.json, comments/ and notes.json.
+*.html
+timings.json
+comments.json
+comments/
+notes.json
+*.tmp

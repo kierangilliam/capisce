@@ -11,3 +11,13 @@ for (const figure of document.querySelectorAll<HTMLElement>("[data-figure]")) {
   figure.querySelector(".figure_alt")?.classList.add("hidden");
   mount(Figure, { target: figure, props: { scenario } });
 }
+
+const first_capisce = document.querySelector("#first_capisce");
+const repo_link = document.querySelector(".repo_link");
+if (first_capisce !== null && repo_link !== null) {
+  /** The corner link stands in for the first "Capisce" once that has scrolled off the top. */
+  new IntersectionObserver(([entry]) => {
+    const scrolled_past = entry !== undefined && !entry.isIntersecting && entry.boundingClientRect.bottom < 0;
+    repo_link.classList.toggle("shown", scrolled_past);
+  }).observe(first_capisce);
+}

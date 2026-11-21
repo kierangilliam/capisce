@@ -1,10 +1,26 @@
+/* Libre Baskerville, by Impallari Type, under the SIL Open Font License 1.1. Served from this site. */
+@font-face {
+  font-family: "Libre Baskerville";
+  font-style: normal;
+  font-weight: 400 700;
+  font-display: swap;
+  src: url("./fonts/libre_baskerville.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Libre Baskerville";
+  font-style: italic;
+  font-weight: 400;
+  font-display: swap;
+  src: url("./fonts/libre_baskerville_italic.woff2") format("woff2");
+}
+
 :root {
   --paper: #fdfdfb;
   --ink: #141414;
   --muted: #6b6b6b;
   --rule: #d4d4d4;
   --code_background: #f5f5f2;
-  --serif: Aptos, Calibri, Carlito, "Helvetica Neue", Helvetica, Arial, sans-serif;
+  --serif: "Libre Baskerville", Baskerville, "Baskerville Old Face", Georgia, serif;
   --mono: ui-monospace, "SF Mono", Menlo, Consolas, "DejaVu Sans Mono", monospace;
   --column: 660px;
   --wide: 960px;
@@ -19,7 +35,7 @@ body {
   margin: 0;
   background: var(--paper);
   color: var(--ink);
-  font: 16px/1.4 var(--serif);
+  font: 15.5px/1.5 var(--serif);
   font-kerning: normal;
   text-rendering: optimizeLegibility;
 }
@@ -42,16 +58,36 @@ code { font: 0.8em var(--mono); }
 
 kbd {
   display: inline-block;
-  min-width: 1.45em;
-  padding: 0 0.38em;
-  border: 1px solid #b9b9b4;
-  border-bottom-width: 2.5px;
+  min-width: 1.9em;
+  height: 1.9em;
+  margin: 0 0.1em;
+  padding: 0 0.45em;
+  border: 1px solid #a9a9a3;
   border-radius: 5px;
-  background: #ffffff;
-  font: 0.78em/1.45 var(--mono);
+  background: linear-gradient(#ffffff, #f1f1ec);
+  box-shadow: 0 2px 0 #a9a9a3, 0 3px 2px rgba(0, 0, 0, 0.12), inset 0 0 0 1.5px #ffffff;
+  font: 600 0.82em/1.8 var(--mono);
   text-align: center;
-  vertical-align: 0.1em;
+  text-transform: uppercase;
+  vertical-align: 0.12em;
 }
+
+.repo_link {
+  position: fixed;
+  top: 14px;
+  right: 16px;
+  display: block;
+  width: 26px;
+  height: 26px;
+  color: var(--ink);
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.2s, visibility 0.2s;
+}
+.repo_link.shown { opacity: 1; visibility: visible; }
+.repo_link:hover { opacity: 0.65; }
+.repo_link svg { display: block; width: 100%; height: 100%; fill: currentColor; }
+@media (prefers-reduced-motion: reduce) { .repo_link { transition: none; } }
 
 pre {
   overflow-x: auto;
@@ -126,7 +162,7 @@ figure { margin: 1em 0 1.4em; }
 }
 
 @media (max-width: 760px) {
-  body { font-size: 16px; }
+  body { font-size: 15px; }
   .document { padding-top: 40px; }
   .side_by_side { grid-template-columns: minmax(0, 1fr); }
   .stages { grid-template-columns: 84px minmax(0, 1fr); }

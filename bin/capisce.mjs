@@ -69,12 +69,14 @@ async function config_paths_at(show, folder) {
 /**
  * The map as it was at `ref`, read with today's config. A commit from before the map moved keeps it somewhere else,
  * so each of `maps` and `domains` is looked for in three places: where today's config says, where that commit's own
- * config says, and where capisce kept it by default before the .capisce folder.
+ * config says, and where capisce kept it by default before the .capisce folder. Nothing is returned when that commit
+ * has no map at all: every block would count as new, which says nothing about the branch.
  */
 async function map_at(ref, config) {
   const folder = mkdtempSync(join(tmpdir(), "capisce_base_"));
   try {
-    const git = (...git_args) => execFileSync("git", git_args, { cwd: root, encoding: "utf8" }).trim();
+    const git = (...git_args) =>
+      execFileSync("git", git_args, { cwd: root, encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] }).trim();
     // The project may sit in a folder of a larger repository. git archive, run in that folder, reads only it.
     const within = git("rev-parse", "--show-prefix");
     const is_at_ref = (path) => {
@@ -95,6 +97,10 @@ async function map_at(ref, config) {
           console.log(`At ${ref} the ${key} are in ${base_config[key]}: comparing with those.`);
         }
       }
+    }
+    if (!is_at_ref(base_config.maps)) {
+      console.log(`At ${ref} there is no map, so the page is built without changes.`);
+      return undefined;
     }
     const paths = [...config.sources, base_config.maps, base_config.domains].filter(is_at_ref);
     const archive = execFileSync("git", ["archive", ref, ...paths], { cwd: root, maxBuffer: 1 << 30 });
@@ -176,7 +182,11 @@ async function run() {
   let changes;
   if (base_ref !== undefined) {
     const needs_review = review_needed(head, root, config).length > 0;
-    const ids = mark_changes(await map_at(base_ref, config), head);
+    const base = await map_at(base_ref, config);
+    let ids = [];
+    if (base !== undefined) {
+      ids = mark_changes(base, head);
+    }
     if (ids.length > 0) {
       changes = {
         base: base_ref,

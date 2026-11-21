@@ -118,7 +118,7 @@ git mv capisce/* .capisce/        # maps/, domains.map, stamps.json and your own
 
 Then remove `maps`, `domains` and `stamps` from `capisce.config.mjs` (or point them at `.capisce/…`), and change paths such as `./capisce/models.mjs` to `./.capisce/models.mjs`. Take `.capisce/` out of the project's root `.gitignore`, run `capisce build`, and commit `.capisce/.gitignore` with the move. `capisce check` should pass with no new stamp: moving the map does not change the code it describes.
 
-A branch comparison still works across the move. When the commit named by `--base` has no map at today's paths, capisce looks where that commit's own `capisce.config.mjs` says, then in `capisce/`. To read those paths it loads that one file from the older commit. If the file cannot be loaded on its own, for example because it imports other modules, only the `capisce/` fallback is used.
+A branch comparison still works across the move. When the commit named by `--base` has no map at today's paths, capisce looks where that commit's own `capisce.config.mjs` says, then in `capisce/`. To read those paths it loads that one file from the older commit. If the file cannot be loaded on its own, for example because it imports other modules, only the `capisce/` fallback is used. When the older commit has no map at all, the page is built without changes.
 
 `node src/server.mjs <folder>` serves the page in a `.capisce` folder without building, on `PORT`. Use it to keep a page up as a service and rebuild `index.html` beside it. It serves the page, comments, notes and timings, and no other file of the folder.
 

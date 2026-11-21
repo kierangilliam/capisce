@@ -1,6 +1,7 @@
 import { tick } from "svelte";
 import { symbol_of } from "../map/catalog";
 import { steps_of } from "../map/steps";
+import { trace_of } from "../map/trace";
 import type { CommentDraft, CommentPlace, PanelName, Point, SavedComment, Stroke } from "../types";
 import { api_request, upload_screenshot } from "./api";
 import { current, go } from "./navigation.svelte";
@@ -11,12 +12,14 @@ const CHANGE_FAILED = "The comment was not changed. Check your connection, then 
 const EMPTY_DRAFT = "Write a comment, add a picture or draw first.";
 const PICTURE_FAILED = "The picture was not added. Use a PNG, JPEG, GIF or WebP under 12 MB, then add it again.";
 const ANNOTATED =
-  ".line, .stage_label, .trace_row, .lane_head, .code_name, .called_name, .code_doc, .peek_doc, .relation, .panel_label, .page_name, .page_doc, .model_box, .domain_box, .flow_card, .data_links, .browse_item, .browse_module summary, .group_title, .crumb, .bar_button";
+  ".line, .stage_label, .trace_row, .lane_head, .code_name, .called_name, .code_doc, .peek_doc, .relation, .panel_label, .page_name, .page_doc, .model_box, .domain_box, .flow_card, .browse_item, .browse_module summary, .group_title, .crumb, .bar_button";
 /** Parts of the page that look the same on every page, so a comment on them shows everywhere. */
 const EVERYWHERE: PanelName[] = ["browse", "bar"];
 const REFRESH_MS = 20_000;
 const COVERABLE = ".line, .stage_label, .trace_row";
 const MAX_COVERED = 40;
+/** What a pin is on when it is on none of the parts above: a control, named by its text or its tooltip. */
+const CONTROL = "button, a, summary, [title]";
 
 export const comments = $state({
   list: [] as SavedComment[],
@@ -33,8 +36,13 @@ export const comments = $state({
 
 const selected_step = (): number | null => current().step ?? null;
 
+const picked_call = (): number | null => current().trace ?? null;
+
+/** Comments saved before the picked call was kept show on the page whatever call is picked. */
 export const in_view = (comment: CommentPlace): boolean =>
-  comment.symbol === current().id && comment.step_index === selected_step();
+  comment.symbol === current().id &&
+  comment.step_index === selected_step() &&
+  (comment.trace_index === undefined || comment.trace_index === picked_call());
 
 /** Whether a comment's pin or drawings belong on this part of the page right now. */
 export const shown_on = (panel: PanelName, comment: SavedComment | CommentDraft): boolean =>
@@ -73,8 +81,28 @@ function text_of(element: Element): string {
 
 function view_place(): CommentPlace {
   const entry = current();
-  const step = steps_of(symbol_of(entry.id))[entry.step ?? -1];
-  return { symbol: entry.id, step: step?.title ?? "", step_index: selected_step() };
+  const symbol = symbol_of(entry.id);
+  let step = steps_of(symbol)[entry.step ?? -1]?.title ?? "";
+  if (entry.trace !== undefined && symbol !== undefined) {
+    const called = trace_of(symbol).rows[entry.trace];
+    step = `${called?.owner} › ${called?.title}`;
+  }
+  return { symbol: entry.id, step, step_index: selected_step(), trace_index: picked_call() };
+}
+
+function control_at(client_x: number, client_y: number): string {
+  const control = document
+    .elementsFromPoint(client_x, client_y)
+    .map((element) => element.closest(CONTROL))
+    .find((element) => element !== null);
+  if (control === undefined || control === null) {
+    return "";
+  }
+  const title = control.getAttribute("title") ?? "";
+  if (title === "") {
+    return text_of(control);
+  }
+  return one_line(`${text_of(control)} (${title})`);
 }
 
 export function start_draft(panel: PanelName, [x, y]: Point, client_x: number, client_y: number): void {
@@ -85,6 +113,8 @@ export function start_draft(panel: PanelName, [x, y]: Point, client_x: number, c
   let target = "";
   if (under !== undefined && under !== null) {
     target = text_of(under);
+  } else {
+    target = control_at(client_x, client_y);
   }
   draft_at(panel, [x, y], target);
 }
@@ -223,7 +253,7 @@ export async function show_comment(comment: SavedComment): Promise<void> {
     return;
   }
   if (!in_view(comment)) {
-    await go(comment.symbol, { step: comment.step_index ?? undefined });
+    await go(comment.symbol, { step: comment.step_index ?? undefined, trace: comment.trace_index ?? undefined });
     await tick();
   }
   panel_element(comment.pin.panel)?.scrollTo(Math.max(0, comment.pin.x - 200), Math.max(0, comment.pin.y - 120));

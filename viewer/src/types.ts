@@ -41,6 +41,7 @@ export type Domain = {
   tag: string;
   doc: string;
   frame: boolean;
+  outside?: boolean;
   at: [number, number] | [];
   models: string[];
   relations: Relation[];
@@ -66,7 +67,7 @@ export type Step = { title: string; target: string | undefined; exits: string[];
 export type PanelName = "flow" | "code" | "browse" | "bar";
 export type Point = [number, number];
 export type Stroke = { panel: PanelName; points: Point[] };
-export type CommentPlace = { symbol: string; step: string; step_index: number | null };
+export type CommentPlace = { symbol: string; step: string; step_index: number | null; trace_index?: number | null };
 export type CommentDraft = CommentPlace & {
   pin: { panel: PanelName; x: number; y: number };
   target: string;

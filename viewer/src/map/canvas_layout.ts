@@ -46,14 +46,32 @@ function arrow_head_points(from: CanvasPoint, to: CanvasPoint): string {
   return `${to.x},${to.y} ${wing(-HEAD_ANGLE)} ${wing(HEAD_ANGLE)}`;
 }
 
-/** Where every domain box, relation arrow and the frame go on the canvas. */
+function span_of(cells: number[]): { first: number; count: number } {
+  if (cells.length === 0) {
+    return { first: 0, count: 1 };
+  }
+  const first = Math.min(...cells);
+  return { first, count: Math.max(...cells) - first + 1 };
+}
+
+/** Where every domain box, relation arrow and the frame go on the canvas. The frame goes around the domains not marked outside. */
 export function canvas_layout(domains: Domain[]): CanvasLayout {
   const placed = domains.filter((domain) => !domain.frame);
   const by_id = new Map(placed.map((domain) => [domain.id, domain]));
   const columns = Math.max(0, ...placed.map((domain) => domain.at[0] ?? 0)) + 1;
   const rows = Math.max(0, ...placed.map((domain) => domain.at[1] ?? 0)) + 1;
-  const frame_width = FRAME.pad_x * 2 + (columns - 1) * CELL.width + BOX.width;
-  const frame_height = FRAME.pad_top + FRAME.pad_bottom + (rows - 1) * CELL.height + BOX.height;
+  const width_of = (column_count: number) => FRAME.pad_x * 2 + (column_count - 1) * CELL.width + BOX.width;
+  const height_of = (row_count: number) => FRAME.pad_top + FRAME.pad_bottom + (row_count - 1) * CELL.height + BOX.height;
+
+  const framed = placed.filter((domain) => !domain.outside);
+  const framed_columns = span_of(framed.map((domain) => domain.at[0] ?? 0));
+  const framed_rows = span_of(framed.map((domain) => domain.at[1] ?? 0));
+  const frame = {
+    left: FRAME.left + framed_columns.first * CELL.width,
+    top: FRAME.top + framed_rows.first * CELL.height,
+    width: width_of(framed_columns.count),
+    height: height_of(framed_rows.count),
+  };
 
   const edges: CanvasEdge[] = [];
   for (const domain of placed) {
@@ -74,9 +92,9 @@ export function canvas_layout(domains: Domain[]): CanvasLayout {
     }
   }
   return {
-    width: FRAME.left * 2 + frame_width,
-    height: FRAME.top + frame_height + 14,
-    frame: { left: FRAME.left, top: FRAME.top, width: frame_width, height: frame_height },
+    width: FRAME.left * 2 + width_of(columns),
+    height: FRAME.top + height_of(rows) + 14,
+    frame,
     boxes: placed.map((domain) => ({ domain, ...box_corner(domain) })),
     edges,
   };

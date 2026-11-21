@@ -1,7 +1,7 @@
 <script lang="ts">
   import { catalog, crumb_label } from "../map/catalog";
   import { comments, unread_count } from "../state/comments.svelte";
-  import { go_to_entry, nav, open_changes } from "../state/navigation.svelte";
+  import { go_to_crumb, move, nav, open_changes } from "../state/navigation.svelte";
   import { notes } from "../state/notes.svelte";
   import { overlays } from "../state/overlays.svelte";
   import { set_commenting, set_noting } from "../state/side_panes";
@@ -18,11 +18,11 @@
 
 <header class="bar">
   <button class="bar_button menu_button" class:on={overlays.menu_open} onclick={() => (overlays.menu_open = !overlays.menu_open)}>Browse</button>
-  <button class="bar_button" title="Back" disabled={nav.at <= 0} onclick={() => go_to_entry(nav.at - 1)}>←</button>
-  <button class="bar_button" title="Forward" disabled={nav.at >= nav.entries.length - 1} onclick={() => go_to_entry(nav.at + 1)}>→</button>
+  <button class="bar_button" title="Back" disabled={nav.index <= 0} onclick={() => move(-1)}>←</button>
+  <button class="bar_button" title="Forward" disabled={nav.index >= nav.last} onclick={() => move(1)}>→</button>
   <nav class="crumbs">
-    {#each nav.entries.slice(0, nav.at + 1) as crumb, index}
-      <button class="crumb" data-crumb={index} onclick={() => go_to_entry(index)}>{crumb_label(crumb.id)}</button>
+    {#each nav.entries as crumb, index}
+      <button class="crumb" data-crumb={index} onclick={() => go_to_crumb(index)}>{crumb_label(crumb.id)}</button>
     {/each}
   </nav>
   {#if catalog.changes !== undefined}

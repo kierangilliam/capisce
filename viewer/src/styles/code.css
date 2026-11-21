@@ -3,7 +3,7 @@
 .code_doc { margin: 4px 0 0; color: var(--cp_foreground); max-width: 62ch; }
 .capisce .code_toggle {
   position: absolute; top: -2px; right: 12px; padding: 1px 7px;
-  border: 1px solid var(--cp_border); border-radius: var(--cp_radius); font: 11.5px/1.5 var(--cp_mono); color: var(--cp_muted);
+  border: 1px solid var(--cp_border); border-radius: var(--cp_radius); font: 600 11.5px/1.5 var(--cp_sans); letter-spacing: 0.5px; color: var(--cp_muted);
 }
 .capisce .code_toggle:not(:disabled):hover, .capisce .code_toggle.on { background: var(--cp_foreground); border-color: var(--cp_foreground); color: var(--cp_background); }
 .capisce .code_toggle:disabled { cursor: default; opacity: 0.45; }
@@ -49,7 +49,11 @@
   position: sticky; top: var(--called_name_top, 12px); left: 0; z-index: 2;
   width: 100%; height: 0; display: flex; justify-content: center; align-items: center; pointer-events: none;
 }
-.called_name_row.of_page { top: -12px; width: 100cqw; height: 30px; margin-bottom: 6px; background: var(--cp_background); pointer-events: auto; }
+.called_name_row.of_page {
+  top: -12px; width: 100cqw; height: 30px; margin: -12px 0 6px; align-items: flex-start;
+  background: var(--cp_background); pointer-events: auto;
+}
+.called_name_row.of_page .called_name { border-color: var(--cp_border); border-top: 0; border-radius: 0 0 var(--cp_radius) var(--cp_radius); }
 .called_name_row.of_page ~ .lines { --called_name_top: 32px; }
 .called_name {
   display: flex; gap: 12px; align-items: baseline; max-width: calc(100% - 24px); padding: 2px 10px; pointer-events: auto;

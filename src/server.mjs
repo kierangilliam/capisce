@@ -72,6 +72,7 @@ function comment_of(body) {
     symbol: text_of(body.symbol),
     step: text_of(body.step),
     step_index: Number.isInteger(body.step_index) ? body.step_index : null,
+    trace_index: Number.isInteger(body.trace_index) ? body.trace_index : null,
     target: text_of(body.target),
     covers: Array.isArray(body.covers) ? body.covers.map(text_of) : [],
     text: text_of(body.text).trim(),

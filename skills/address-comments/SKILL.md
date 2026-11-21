@@ -30,9 +30,9 @@ A thread looks like this:
   reader: Any order that shipped.
 ```
 
-- **`page`** is the endpoint, function, flow or domain the reader was on, and the step they had selected, if any.
+- **`page`** is the endpoint, function, flow or domain the reader was on, and the step they had selected, if any. When they had picked a function the endpoint calls, the page names that function and its step after the endpoint: the comment is about that function.
 - **`part`** is where on the page the pin is: `flow` (the trace diagram), `code` (the pseudo-code and descriptions), `browse` (the list on the left) or `bar` (the top bar). A comment on `browse` or `bar` is about the page as a whole, not about the `page` it was left on.
-- **`pinned to`** is the text under the pin. **`drawn over`** lines are the text under a drawing.
+- **`pinned to`** is the text under the pin. On a button it is the button's text, with its tooltip in brackets. **`drawn over`** lines are the text under a drawing.
 - **`picture`** is a file. Open every picture before you answer: it is often the whole point of the comment.
 - The messages follow in order. Read all of them, not only the last.
 

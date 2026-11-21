@@ -17,7 +17,7 @@
   import { CANVAS_PAGE, CHANGES_PAGE, catalog, domain_of_page, symbol_of } from "./map/catalog";
   import { steps_of } from "./map/steps";
   import { cancel_draft, comments, keep_comments_fresh, load_comments, save_draft, unread_count } from "./state/comments.svelte";
-  import { current, go, shown_code } from "./state/navigation.svelte";
+  import { current, shown_code, start_history } from "./state/navigation.svelte";
   import { load_notes, notes, save_note } from "./state/notes.svelte";
   import { close_overlays, overlays } from "./state/overlays.svelte";
   import { set_commenting, set_noting } from "./state/side_panes";
@@ -37,9 +37,7 @@
   keep_comments_fresh();
   void load_notes();
   void load_timings();
-  if (catalog.changes !== undefined) {
-    void go(CHANGES_PAGE);
-  }
+  start_history();
 
   function close_what_was_clicked_away(event: MouseEvent) {
     const target = event.target;

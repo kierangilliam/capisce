@@ -85,7 +85,7 @@ more:
 - **`tag`** is a few words under the name. **`doc`** is what the domain is, in plain words, with the rules that matter.
 - **`models`** names the models it holds. **`files`** lists its files, with `*` where that helps. When one file holds things from several domains (a single routes file, say), give those blocks a `domain:` line in the map instead.
 - **`relations`** are drawn as arrows on the canvas, so keep them to the few that matter and to neighbours where you can. A label between neighbours has room for two or three short words. **`more`** are relations shown on the domain's page only.
-- One domain may have `frame: true`: it is drawn as a frame around the rest, for the thing everything belongs to, such as an account or a workspace.
+- One domain may have `frame: true`: it is drawn as a frame around the rest, for the thing everything belongs to, such as an account or a workspace. A domain that does not belong to it has `outside: true` and is drawn outside the frame: place it in a column or row of its own, at the edge of the canvas.
 - A domain with `hidden: true` holds files that are not part of the business, such as logging.
 
 The build fails until every file the config reads, and every model, is in a domain. Aim for about six to twelve domains. Ask the owner to look at the canvas before going on: a wrong split is cheap to fix now.

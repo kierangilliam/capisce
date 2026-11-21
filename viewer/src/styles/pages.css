@@ -39,8 +39,6 @@
 .relation { display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; padding: 2px 0; }
 .relation_label { color: var(--cp_muted); }
 .capisce .relation_domain { font-weight: 600; text-decoration: underline; text-underline-offset: 2px; }
-.data_links { font: 11.5px/1.7 var(--cp_mono); color: var(--cp_muted); margin-top: 6px; }
-.data_links summary { cursor: pointer; font: 12px var(--cp_sans); }
 
 .change { display: flex; flex-direction: column; gap: 4px; padding: 8px 0; border-top: 1px solid var(--cp_border); max-width: 900px; }
 .change_head { display: flex; gap: 10px; align-items: baseline; flex-wrap: wrap; }

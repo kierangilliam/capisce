@@ -74,6 +74,7 @@ function parse_domains(text) {
       tag: domain.tag ?? "",
       doc: domain.doc ?? "",
       frame: domain.frame === "true",
+      outside: domain.outside === "true",
       hidden: domain.hidden === "true",
       at: names_of(domain.at).map(Number),
       models: names_of(domain.models),

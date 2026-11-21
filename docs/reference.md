@@ -30,6 +30,19 @@ node /path/to/capisce/bin/capisce.mjs reply <id> "<text>" --done   # answer one 
 
 A project needs a `capisce.config.mjs` at its root. The setup skill says how to write one. Everything else capisce keeps for the project is in one `.capisce` folder beside it, described below. `check`, `stamp`, `comments` and `reply` need no install.
 
+## Links
+
+Every view has its own address, so the browser's Back and Forward buttons work, a reload stays where it was, and a copied link opens the same view. The address is kept after the `#`, so it works for a page opened from a file or served under any path:
+
+```text
+#/                                      the canvas
+#/domain:Orders                         a domain
+#/GET%20/api/orders/:id?step=2          an endpoint, with its second step selected
+#/POST%20/api/orders?call=7             an endpoint, showing a function its trace calls
+```
+
+Opening a page adds to the browser's history. Selecting a step, or a called function in the trace, changes the address in place. Turning comments, notes or timings on does neither. A page inside a frame of another page keeps its own history, and leaves the outer page's alone.
+
 ## Comments
 
 `capisce serve` shows the page with comments turned on. Press **C**, then click anywhere on the page to pin a comment, or drag to draw. A comment can hold pictures: attach one, or paste it. Comments open in a small sheet at the bottom right. It lists the open ones; older ones are a click away, grouped by when they were left.

@@ -3,15 +3,11 @@
   import { go } from "../state/navigation.svelte";
   import type { Domain } from "../types";
   import DocText from "./doc_text.svelte";
-  import SymbolLink from "./symbol_link.svelte";
 
   let { domain, focus }: { domain: Domain; focus: string | undefined } = $props();
 
   const flows = $derived(catalog.data.symbols.filter((symbol) => symbol.domain === domain.id && symbol.kind === "flow"));
-  const data_links = $derived.by(() => {
-    const own_models = new Set(domain.models);
-    return catalog.data.data_links.filter((link) => own_models.has(link.from) !== own_models.has(link.to));
-  });
+  const outside = $derived(catalog.data.domains.filter((other) => other.outside && !other.frame).map((other) => other.id));
   const changed_relations = $derived(domain.diff?.relations ?? []);
   const removed_relations = $derived(changed_relations.filter(([op]) => op === "-").map(([, name]) => name));
   const outgoing = $derived([...domain.relations, ...domain.more]);
@@ -47,7 +43,9 @@
   <div>
     <div class="panel_label">Relations</div>
     {#if domain.frame}
-      <div class="relation"><span class="relation_label">Every other domain sits inside {domain.id}.</span></div>
+      <div class="relation"><span class="relation_label">
+          Every other domain sits inside {domain.id}{#if outside.length > 0}, apart from {outside.join(" and ")}{/if}.
+        </span></div>
     {:else}
       {#each removed_relations as name}
         <div class="relation removed" class:focused={focus_relations}><span class="relation_label">{name}</span></div>
@@ -65,14 +63,6 @@
           <span class="relation_label">{relation.label}</span>
         </div>
       {/each}
-    {/if}
-    {#if data_links.length > 0}
-      <details class="data_links">
-        <summary>{data_links.length} columns link its models to other domains</summary>
-        {#each data_links as link}
-          <div><SymbolLink id={link.from} />.{link.field} → <SymbolLink id={link.to} /></div>
-        {/each}
-      </details>
     {/if}
   </div>
 

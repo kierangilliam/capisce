@@ -48,6 +48,8 @@ body {
 
 p, ul, pre { margin: 0 0 0.75em; }
 
+.salutation { margin-bottom: 2.25em; }
+
 ul { padding-left: 1.3em; }
 li { margin-bottom: 0.2em; }
 

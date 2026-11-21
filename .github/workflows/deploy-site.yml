@@ -1,0 +1,51 @@
+# Deploys the website to Cloudflare when main changes.
+# Runs only on pushes to main, never on pull requests, so code from a fork cannot reach the secrets.
+# The secrets live in the "production" environment: CLOUDFLARE_API_TOKEN and CLOUDFLARE_ACCOUNT_ID.
+name: Deploy the site
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "website/**"
+      - "viewer/**"
+      - "src/**"
+      - "bin/**"
+      - "examples/**"
+      - "package.json"
+      - "pnpm-lock.yaml"
+      - ".github/workflows/deploy-site.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-site
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
+        with:
+          version: 12
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
+      - name: Build the page
+        run: pnpm install --frozen-lockfile && pnpm build
+      - name: Build and deploy the site
+        working-directory: website
+        run: pnpm install --frozen-lockfile && pnpm run deploy
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CF_WORKER_NAME: capisce
+          CF_DOMAINS: capisce.software,www.capisce.software

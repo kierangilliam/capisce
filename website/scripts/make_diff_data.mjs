@@ -3,7 +3,7 @@
 // (the code, its pseudo-code and a new step), stamps the map as an agent would, and builds with --base main.
 // Run it again after the example or the map format changes: `pnpm diff-data`.
 import { execFileSync } from "node:child_process";
-import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -13,7 +13,7 @@ const repo = join(website, "..");
 const cli = join(repo, "bin", "capisce.mjs");
 const out = join(website, "src", "data", "oxide-lite-diff.json");
 const BRANCH = "rack-capacity-check";
-const INSTANCES_MAP = "maps/instances.map";
+const INSTANCES_PROGRAM = ".capisce/program/instances.capisce";
 
 const EDITS = [
   {
@@ -27,12 +27,12 @@ const EDITS = [
       "    }\n",
   },
   {
-    file: INSTANCES_MAP,
+    file: INSTANCES_PROGRAM,
     from: '        # the boot disk is named "<instance name>-boot"\n',
     to: '        boot_disk_name = new.name + "-boot"\n',
   },
   {
-    file: INSTANCES_MAP,
+    file: INSTANCES_PROGRAM,
     from: "            new.memory_gib, new.boot_disk_size_gib)\n",
     to:
       "            new.memory_gib, new.boot_disk_size_gib)\n" +
@@ -42,7 +42,7 @@ const EDITS = [
       "            raise ApiError.RackFull                # 503\n",
   },
   {
-    file: INSTANCES_MAP,
+    file: INSTANCES_PROGRAM,
     from: "    # 503 AddressPoolExhausted\n",
     to: "    # 503 AddressPoolExhausted or RackFull\n",
   },
@@ -52,14 +52,13 @@ const folder = mkdtempSync(join(tmpdir(), "capisce_diff_"));
 try {
   const archive = execFileSync("git", ["archive", "HEAD:examples/oxide-lite"], { cwd: repo, maxBuffer: 1 << 30 });
   execFileSync("tar", ["-x", "-C", folder], { input: archive });
-  const map_folder = [".capisce", "capisce"].find((name) => existsSync(join(folder, name, INSTANCES_MAP)));
   const git = (...args) => execFileSync("git", args, { cwd: folder, stdio: "pipe" });
   git("init", "-q", "-b", "main");
   git("add", ".");
   git("-c", "user.name=capisce", "-c", "user.email=capisce@example.com", "commit", "-q", "-m", "main");
   git("checkout", "-q", "-b", BRANCH);
   for (const { file, from, to } of EDITS) {
-    const path = file === INSTANCES_MAP ? join(folder, map_folder ?? ".capisce", file) : join(folder, file);
+    const path = join(folder, file);
     const text = readFileSync(path, "utf8");
     if (!text.includes(from)) {
       throw new Error(`${file} no longer has the line this script changes:\n${from}Update EDITS in scripts/make_diff_data.mjs.`);

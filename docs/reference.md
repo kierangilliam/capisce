@@ -99,9 +99,9 @@ Everything capisce keeps for a project lives in one folder, `.capisce` at the pr
 
 ```text
 .capisce/
-  maps/<domain>.map          committed   the pseudo-code, flows and glossary, one file for each domain
-  maps/shared.map            committed   names and terms every domain uses
-  domains.map                committed   the domains and how they relate
+  program/<domain>.capisce   committed   the pseudo-code, flows and glossary, one file for each domain
+  program/shared.capisce     committed   names and terms every domain uses
+  domains.capisce            committed   the domains and how they relate
   stamps.json                committed   what was reviewed, written by `capisce stamp`
   models.mjs, timings.mjs    committed   the project's own extractors and source of timings, if it has any
   .gitignore                 committed   written by capisce: it lists the local files below
@@ -112,9 +112,9 @@ Everything capisce keeps for a project lives in one folder, `.capisce` at the pr
   notes.json                 local       the notes
 ```
 
-`capisce.config.mjs` stays at the project's root. Its `maps`, `domains` and `stamps` default to the paths above, so most configs leave them out.
+`capisce.config.mjs` stays at the project's root. Its `program`, `domains` and `stamps` default to the paths above, so most configs leave them out. `program` names the folder of program files; `maps` is its former name and still works.
 
-**Changes come from the committed map.** `capisce build --base <git ref>` reads the map and the code as they were at that commit and compares them with the checkout, so the page shows what a branch changed. This works because the map files are in git beside the code.
+**Changes come from the committed map.** `capisce build --base <git ref>` reads the map and the code as they were at that commit and compares them with the checkout, so the page shows what a branch changed. This works because the program files are in git beside the code.
 
 **What git ignores.** The first time capisce writes into the folder, it adds `.capisce/.gitignore` if there is none. Commit that file. It ignores `*.html`, `timings.json`, `comments.json`, `comments/`, `notes.json` and `*.tmp`. The page is built and the timings are fetched, so they never belong in git. Comments and notes are ignored too: they are one reader's review conversation, they change with every reply, and they can hold screenshots. To share them through git, delete the `comments.json`, `comments/` and `notes.json` lines from `.capisce/.gitignore`. capisce never rewrites a `.gitignore` that is already there.
 
@@ -122,16 +122,29 @@ Everything capisce keeps for a project lives in one folder, `.capisce` at the pr
 
 ### Moving an existing map
 
-Older projects keep the map in a `capisce/` folder, or wherever their config says. Those paths keep working. To move to the single folder:
+The files have had other names and places. All of them keep working, so a project can move when it likes.
+
+**From `maps/*.map` to `program/*.capisce`.** Program files used to end in `.map` and live in `.capisce/maps/`, beside `.capisce/domains.map`. capisce still reads both, and `capisce build` says in one line that they can be renamed. To rename them:
+
+```sh
+cd .capisce
+git mv maps program
+for file in program/*.map; do git mv "$file" "${file%.map}.capisce"; done
+git mv domains.map domains.capisce
+```
+
+A config that names the folder itself (`maps: "docs/map"`) keeps working. Rename the key to `program` when you next edit it. Inside a folder, `.map` and `.capisce` files can be mixed, but two files with the same name (`orders.map` and `orders.capisce`) are refused. Then change any script, skill or note of your own that names the old paths. `capisce check` should pass with no new stamp, and `capisce build --base <the commit before>` should show no changes: blocks are matched by their id, not by the file they are in.
+
+**From a `capisce/` folder to `.capisce/`.** Older projects keep the map in a `capisce/` folder, or wherever their config says. To move to the single folder, with today's names:
 
 ```sh
 mkdir -p .capisce
 git mv capisce/* .capisce/        # maps/, domains.map, stamps.json and your own modules
 ```
 
-Then remove `maps`, `domains` and `stamps` from `capisce.config.mjs` (or point them at `.capisce/…`), and change paths such as `./capisce/models.mjs` to `./.capisce/models.mjs`. Take `.capisce/` out of the project's root `.gitignore`, run `capisce build`, and commit `.capisce/.gitignore` with the move. `capisce check` should pass with no new stamp: moving the map does not change the code it describes.
+Then rename the files as above. Remove `maps`, `domains` and `stamps` from `capisce.config.mjs` (or point `program`, `domains` and `stamps` at `.capisce/…`), and change paths such as `./capisce/models.mjs` to `./.capisce/models.mjs`. Take `.capisce/` out of the project's root `.gitignore`, run `capisce build`, and commit `.capisce/.gitignore` with the move. `capisce check` should pass with no new stamp: moving the map does not change the code it describes.
 
-A branch comparison still works across the move. When the commit named by `--base` has no map at today's paths, capisce looks where that commit's own `capisce.config.mjs` says, then in `capisce/`. To read those paths it loads that one file from the older commit. If the file cannot be loaded on its own, for example because it imports other modules, only the `capisce/` fallback is used. When the older commit has no map at all, the page is built without changes.
+A branch comparison still works across a move or a rename. When the commit named by `--base` has no program files at today's paths, capisce looks where that commit's own `capisce.config.mjs` says (under `program` or `maps`), then in `.capisce/maps`, then in `capisce/maps`, and the same for the domains file. To read those paths it loads that one file from the older commit. If the file cannot be loaded on its own, for example because it imports other modules, only the former defaults are used. When the older commit has no map at all, the page is built without changes.
 
 `node src/server.mjs <folder>` serves the page in a `.capisce` folder without building, on `PORT`. Use it to keep a page up as a service and rebuild `index.html` beside it. It serves the page, comments, notes and timings, and no other file of the folder.
 

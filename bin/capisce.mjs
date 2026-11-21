@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// capisce build [out.html] [--base <git ref>] [--only <map>] [--json <out.json>]   build the page
+// capisce build [out.html] [--base <git ref>] [--only <name>] [--json <out.json>]   build the page
 //   with --json and no out.html, only the data is written
 // capisce check                                                                    fail when the map needs a review
 // capisce stamp                                                                    record that the map was reviewed
@@ -9,7 +9,7 @@
 // capisce timings                                                                  fetch how long each endpoint takes, from the project's source
 // capisce skill <name>                                                             print a skill: setup, update or address-comments
 // Every command reads capisce.config.mjs from --root <folder>, or from the current folder.
-// The map (maps, domains, stamps) is committed in .capisce in the root, unless the config names other paths.
+// The map (program files, domains, stamps) is committed in .capisce in the root, unless the config names other paths.
 // The built page, comments, notes and timings are local files in that same folder, which capisce tells git to
 // ignore. --state <folder> or CAPISCE_STATE keeps the local files somewhere else.
 import { execFileSync, spawn } from "node:child_process";
@@ -18,7 +18,15 @@ import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { add_reply, awaits_reply, comment_text, read_comments } from "../src/comments.mjs";
-import { CONFIG_FILE, FORMER_MAP_PATHS, build_map, load_config } from "../src/engine.mjs";
+import {
+  CONFIG_FILE,
+  FORMER_PROGRAM_EXTENSION,
+  PROGRAM_EXTENSION,
+  build_map,
+  load_config,
+  program_files,
+  program_paths,
+} from "../src/engine.mjs";
 import { mark_changes, review_needed, stamped } from "../src/review.mjs";
 import { prepare_state } from "../src/state.mjs";
 import { fetch_timings, timings_path, write_timings } from "../src/timings.mjs";
@@ -54,22 +62,35 @@ const all = flag("--all");
 const done = flag("--done");
 const [command, target, ...rest] = args;
 
-/** The `maps` and `domains` paths that the config of the commit at `ref` names, or nothing when it cannot be read. */
-async function config_paths_at(show, folder) {
+const PATH_NAMES = { program: "program files", domains: "domains" };
+
+/** The config of the commit at `ref`, or an empty one when it cannot be read. */
+async function config_at(show, folder) {
   try {
     const path = join(folder, CONFIG_FILE);
     writeFileSync(path, show(CONFIG_FILE));
-    const config = (await import(pathToFileURL(path).href)).default;
-    return { maps: config.maps, domains: config.domains };
+    return (await import(pathToFileURL(path).href)).default;
   } catch {
     return {};
   }
 }
 
+/** Says on a build that the program files still have their former names. `check` stays quiet. */
+function former_names_hint(config) {
+  const former_files = program_files(join(root, config.program)).filter(({ file }) =>
+    file.endsWith(FORMER_PROGRAM_EXTENSION),
+  );
+  if (former_files.length > 0 || config.domains.endsWith(FORMER_PROGRAM_EXTENSION)) {
+    console.log(
+      `Program files are now named <domain>${PROGRAM_EXTENSION}, with domains${PROGRAM_EXTENSION} beside their folder. Yours still work under their former names. "Moving an existing map" in the reference says how to rename them.`,
+    );
+  }
+}
+
 /**
  * The map as it was at `ref`, read with today's config. A commit from before the map moved keeps it somewhere else,
- * so each of `maps` and `domains` is looked for in three places: where today's config says, where that commit's own
- * config says, and where capisce kept it by default before the .capisce folder. Nothing is returned when that commit
+ * so the program folder and the domains file are each looked for in three places: where today's config says, where
+ * that commit's own config says, and where capisce kept them by default before. Nothing is returned when that commit
  * has no map at all: every block would count as new, which says nothing about the branch.
  */
 async function map_at(ref, config) {
@@ -88,21 +109,21 @@ async function map_at(ref, config) {
       }
     };
     const base_config = { ...config };
-    if (!is_at_ref(config.maps) || !is_at_ref(config.domains)) {
-      const former = [await config_paths_at((path) => git("show", `${ref}:${within}${path}`), folder), FORMER_MAP_PATHS];
-      for (const key of ["maps", "domains"]) {
-        const places = [config[key], ...former.map((paths) => paths[key])];
+    if (!is_at_ref(config.program) || !is_at_ref(config.domains)) {
+      const then = program_paths(await config_at((path) => git("show", `${ref}:${within}${path}`), folder), is_at_ref);
+      for (const key of ["program", "domains"]) {
+        const places = [config[key], then[key]];
         base_config[key] = places.find((path) => typeof path === "string" && is_at_ref(path)) ?? config[key];
         if (base_config[key] !== config[key]) {
-          console.log(`At ${ref} the ${key} are in ${base_config[key]}: comparing with those.`);
+          console.log(`At ${ref} the ${PATH_NAMES[key]} are in ${base_config[key]}: comparing with those.`);
         }
       }
     }
-    if (!is_at_ref(base_config.maps)) {
+    if (!is_at_ref(base_config.program)) {
       console.log(`At ${ref} there is no map, so the page is built without changes.`);
       return undefined;
     }
-    const paths = [...config.sources, base_config.maps, base_config.domains].filter(is_at_ref);
+    const paths = [...config.sources, base_config.program, base_config.domains].filter(is_at_ref);
     const archive = execFileSync("git", ["archive", ref, ...paths], { cwd: root, maxBuffer: 1 << 30 });
     execFileSync("tar", ["-x", "-C", folder], { input: archive });
     return await build_map(folder, base_config, { config_root: root, strict: false });
@@ -178,6 +199,7 @@ async function run() {
     );
   }
   const serving = command === "serve";
+  former_names_hint(config);
 
   let changes;
   if (base_ref !== undefined) {

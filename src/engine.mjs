@@ -6,12 +6,20 @@ import { pathToFileURL } from "node:url";
 
 const DOC_CHARS = 320;
 export const CONFIG_FILE = "capisce.config.mjs";
-/** Where the map was kept before it moved into .capisce. A branch comparison still reads an older commit from here. */
-export const FORMER_MAP_PATHS = { maps: "capisce/maps", domains: "capisce/domains.map" };
+export const PROGRAM_EXTENSION = ".capisce";
+/** What program files were called before. They are still read. */
+export const FORMER_PROGRAM_EXTENSION = ".map";
+const PROGRAM_PATHS = { program: ".capisce/program", domains: ".capisce/domains.capisce" };
+/**
+ * Where the program files were kept by default before, newest first. A project that has not moved them is still read
+ * from here, and so is an older commit in a branch comparison.
+ */
+const FORMER_PROGRAM_PATHS = [
+  { program: ".capisce/maps", domains: ".capisce/domains.map" },
+  { program: "capisce/maps", domains: "capisce/domains.map" },
+];
 const DEFAULTS = {
   name: "",
-  maps: ".capisce/maps",
-  domains: ".capisce/domains.map",
   stamps: ".capisce/stamps.json",
   sources: [],
   extract: [],
@@ -25,7 +33,53 @@ export async function load_config(root) {
     throw new Error(`No ${CONFIG_FILE} in ${root}. The setup skill says how to write one.`);
   }
   const config = (await import(pathToFileURL(path).href)).default;
-  return { ...DEFAULTS, ...config, commands: { ...DEFAULTS.commands, ...config.commands } };
+  return {
+    ...DEFAULTS,
+    ...config,
+    ...program_paths(config, (place) => existsSync(join(root, place))),
+    commands: { ...DEFAULTS.commands, ...config.commands },
+  };
+}
+
+/**
+ * Where a config keeps its program files and its domains. `maps` is the former name of the `program` key. A path the
+ * config leaves out is today's default, unless that is missing and a former default is there (`is_there` says).
+ */
+export function program_paths(config, is_there) {
+  const place = (named, key) => {
+    if (named !== undefined) {
+      return named;
+    }
+    const defaults = [PROGRAM_PATHS, ...FORMER_PROGRAM_PATHS].map((paths) => paths[key]);
+    return defaults.find(is_there) ?? PROGRAM_PATHS[key];
+  };
+  return { program: place(config.program ?? config.maps, "program"), domains: place(config.domains, "domains") };
+}
+
+/** The program files in a folder, as `{ name, file }`. A name with both the new and the former extension is refused. */
+export function program_files(folder, shown_as = folder) {
+  if (!existsSync(folder)) {
+    return [];
+  }
+  const files = readdirSync(folder)
+    .sort()
+    .flatMap((file) => {
+      const extension = [PROGRAM_EXTENSION, FORMER_PROGRAM_EXTENSION].find((ending) => file.endsWith(ending));
+      if (extension === undefined) {
+        return [];
+      }
+      return [{ name: basename(file, extension), file }];
+    });
+  const by_name = new Map();
+  for (const { name, file } of files) {
+    if (by_name.has(name)) {
+      throw new Error(
+        `${shown_as} has both ${by_name.get(name)} and ${file}. Keep ${name}${PROGRAM_EXTENSION} and delete the other.`,
+      );
+    }
+    by_name.set(name, file);
+  }
+  return files;
 }
 
 function parse_blocks(text) {
@@ -282,27 +336,25 @@ const NO_SOURCE = { path: "", start: 0, end: 0, code: "" };
 
 /**
  * Reads the map of the checkout at `root`. `config_root` is where the config and its own extractors live: the same
- * place, unless `root` is an older commit unpacked elsewhere. `only` reads one map file with the shared one. An older
+ * place, unless `root` is an older commit unpacked elsewhere. `only` reads one program file with the shared one. An older
  * commit is read with `strict` off, since its domains may not hold every file today's config reads.
  */
 export async function build_map(root, config, { config_root = root, only, strict = true } = {}) {
   const source = source_reader(root, config);
-  const maps_folder = join(root, config.maps);
-  let map_names = [];
-  if (existsSync(maps_folder)) {
-    map_names = readdirSync(maps_folder).flatMap((name) => (name.endsWith(".map") ? [basename(name, ".map")] : []));
-  }
+  const program_folder = join(root, config.program);
+  let files = program_files(program_folder, config.program);
   if (only !== undefined) {
-    map_names = map_names.filter((name) => name === only || name === "shared");
+    files = files.filter(({ name }) => name === only || name === "shared");
   }
-  const written = map_names.flatMap((name) =>
-    parse_symbols(readFileSync(join(maps_folder, `${name}.map`), "utf8")).map((symbol) => ({ ...symbol, map: name })),
+  const file_of = new Map(files.map(({ name, file }) => [name, `${config.program}/${file}`]));
+  const written = files.flatMap(({ name, file }) =>
+    parse_symbols(readFileSync(join(program_folder, file), "utf8")).map((symbol) => ({ ...symbol, map: name })),
   );
   const owners = new Map();
   for (const symbol of written) {
     if (owners.has(symbol.id)) {
       throw new Error(
-        `${symbol.id} is in both ${config.maps}/${owners.get(symbol.id)}.map and ${config.maps}/${symbol.map}.map. Keep one.`,
+        `${symbol.id} is in both ${file_of.get(owners.get(symbol.id))} and ${file_of.get(symbol.map)}. Keep one.`,
       );
     }
     owners.set(symbol.id, symbol.map);
@@ -312,13 +364,13 @@ export async function build_map(root, config, { config_root = root, only, strict
     const [path, prefix] = place.split(" :: ");
     if (!existsSync(join(root, path))) {
       throw new Error(
-        `${symbol.id}: ${path} is gone. Fix its src: line in ${config.maps}/${symbol.map}.map, or delete the block.`,
+        `${symbol.id}: ${path} is gone. Fix its src: line in ${file_of.get(symbol.map)}, or delete the block.`,
       );
     }
     const matches = source.lines_of(path).flatMap((line, index) => (line.trim().startsWith(prefix) ? [index] : []));
     if (matches.length !== 1) {
       throw new Error(
-        `${symbol.id}: "${prefix}" matches ${matches.length} lines in ${path}. Fix its src: line in ${config.maps}/${symbol.map}.map, or delete the block if the code is gone.`,
+        `${symbol.id}: "${prefix}" matches ${matches.length} lines in ${path}. Fix its src: line in ${file_of.get(symbol.map)}, or delete the block if the code is gone.`,
       );
     }
     return source.statement_at(path, matches[0]).src;
@@ -383,7 +435,7 @@ export async function build_map(root, config, { config_root = root, only, strict
   for (const symbol of authored) {
     if (symbol.src === undefined) {
       throw new Error(
-        `${symbol.id} in ${config.maps}/${symbol.map}.map has no src: line, and nothing read from the code has that id. Add a src: line, or fix the id.`,
+        `${symbol.id} in ${file_of.get(symbol.map)} has no src: line, and nothing read from the code has that id. Add a src: line, or fix the id.`,
       );
     }
   }

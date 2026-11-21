@@ -1,4 +1,4 @@
-// The .capisce folder holds two kinds of files. The map (maps, domains, stamps, the project's own extractors) is
+// The .capisce folder holds two kinds of files. The map (program files, domains, stamps, the project's own extractors) is
 // written by people and agents and is committed. The rest is local to one checkout: the built page, the timings,
 // and one reader's comments and notes. capisce writes a .gitignore into the folder so only the map is committed.
 import { existsSync, mkdirSync, writeFileSync } from "node:fs";

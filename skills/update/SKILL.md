@@ -1,17 +1,17 @@
 ---
 name: update
-description: This updates capisce's state by writing pseudo-code and updating the glossary for new code changes. Use when `capisce check` fails, when you add or change code the map covers, or when you write or edit pseudo-code, flows or glossary terms in the map files.
+description: This updates capisce's state by writing pseudo-code and updating the glossary for new code changes. Use when `capisce check` fails, when you add or change code the map covers, or when you write or edit pseudo-code, flows or glossary terms in the program files.
 ---
 
 # Update the map
 
-A capisce map is one page for reading a codebase at the level of business behavior. Models, endpoints and functions are read from the code. People and agents write only the pseudo-code, the flows and the glossary, in the map files. Those live in `.capisce` at the root of the project and are committed with the code: `.capisce/maps/<domain>.map`, `.capisce/domains.map` and `.capisce/stamps.json`. `capisce.config.mjs` at the root says what is read from the code, and names other paths if the project keeps its map elsewhere.
+A capisce map is one page for reading a codebase at the level of business behavior. Models, endpoints and functions are read from the code. People and agents write only the pseudo-code, the flows and the glossary, in the program files. Those live in `.capisce` at the root of the project and are committed with the code: `.capisce/program/<domain>.capisce`, `.capisce/domains.capisce` and `.capisce/stamps.json`. `capisce.config.mjs` at the root says what is read from the code, and names other paths if the project keeps its map elsewhere. An older project may still have `.capisce/maps/<domain>.map` and `.capisce/domains.map`: they are the same files under their former names, and they still work.
 
 Run capisce the way the project wraps it (look for a package script, a Makefile target or a script that calls it). If there is none, clone the capisce repository and run `node <capisce>/bin/capisce.mjs <command>` from the project's root. `build` and `serve` also need the page built once: `pnpm install && pnpm build` in the capisce folder. `capisce skill <name>` prints any of the skills named here.
 
 - `capisce check` names what needs an update. It fails when mapped code changed, when code that must be mapped has no pseudo-code, and when a stamp is out of date.
 - `capisce stamp` records that you reviewed the map against the code. Run it last, once the map says what the code does.
-- `capisce build <out.html> --only <map file name>` builds from one map file and `shared.map` only. It fails on a `src:` line that matches nothing and on a step that points at something that is not there.
+- `capisce build <out.html> --only <domain>` builds from one program file (`<domain>.capisce`) and `shared.capisce` only. It fails on a `src:` line that matches nothing and on a step that points at something that is not there.
 - `capisce build <out.html> --base <git ref>` builds the page with what changed since that commit. It compares against the map committed there, so commit your map changes with the code they describe.
 - `capisce build` with no file writes the page to `.capisce/index.html`, and `capisce serve` builds it there and serves it with comments and notes.
 - `capisce timings` fetches how long each endpoint takes, when the project's config names a source of `timings`. The served page shows them when a reader presses Tab. The numbers are a local file, `.capisce/timings.json`, which git ignores. After you rename or add an endpoint, check that the project's source still returns the map's ids.
@@ -51,7 +51,7 @@ route POST /api/orders/:id/refund(id, amount=None):
     return refund
 ```
 
-- **`===` id.** An endpoint is `METHOD path`, with the path exactly as the code has it. A function is `<file name without its extension>.<function name>`, for example `payment_service.refund`, unless the project's config names functions another way: use the ids `capisce build --json` gives. A flow or a term is a plain name. An id is used once across all map files.
+- **`===` id.** An endpoint is `METHOD path`, with the path exactly as the code has it. A function is `<file name without its extension>.<function name>`, for example `payment_service.refund`, unless the project's config names functions another way: use the ids `capisce build --json` gives. A flow or a term is a plain name. An id is used once across all program files.
 - **`kind`.** `route`, `def`, `flow` or `term`. A term is an entry in the glossary: it has a `doc` and a `src`, and no pseudo-code. If the project generates some kinds from the code (models, for example), never write those by hand.
 - **`group`.** Endpoints only: a short plain name for endpoints that belong together, such as "Refunds".
 - **`src`.** `<path> :: <the start of the line the code begins on>`. It must match exactly one line of the file. Leave it out when the block's id is one capisce reads from the code (an endpoint or a function it finds): the block then describes that code.
@@ -83,7 +83,7 @@ A `#>` line starts a stage. Stages are the steps a reader follows: they label th
 
 ## Names in pseudo-code
 
-A name that matches an id becomes a link, so write calls into other files in full: `payment_service.refund(order, amount)`. A call inside the same module (the same file, or the same folder where the project names things by folder) can use the bare name, as long as only one mapped function has that name; write the full id when in doubt. A model's name links to its model. Names several map files need live in `shared.map`: use them, do not define them again. A term links wherever its name appears as a word, so do not name one after a common word. `[[POST /api/orders/:id/refund]]` links an endpoint or flow from a comment.
+A name that matches an id becomes a link, so write calls into other files in full: `payment_service.refund(order, amount)`. A call inside the same module (the same file, or the same folder where the project names things by folder) can use the bare name, as long as only one mapped function has that name; write the full id when in doubt. A model's name links to its model. Names several program files need live in `shared.capisce`: use them, do not define them again. A term links wherever its name appears as a word, so do not name one after a common word. `[[POST /api/orders/:id/refund]]` links an endpoint or flow from a comment.
 
 ## What to map
 
@@ -102,10 +102,10 @@ src: server/services/billing_service.ts :: export const SEAT_PRICE
 doc: One person's place in a workspace's plan. A workspace pays for each seat, filled or not.
 ```
 
-- Add a term when a change brings in a word a new reader would have to ask about, or a name several map files use that is not a function or a model.
+- Add a term when a change brings in a word a new reader would have to ask about, or a name several program files use that is not a function or a model.
 - Update a term when the code changes what the word means, such as a new state or a rule that moved. Delete it when nothing uses the word any more.
 - `src` points at the code that best holds the meaning, so a change there asks for a review of the term.
-- Terms every domain uses live in `shared.map`. One domain's own terms live in its map file.
+- Terms every domain uses live in `shared.capisce`. One domain's own terms live in its program file.
 
 ## Flows
 

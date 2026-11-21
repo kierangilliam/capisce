@@ -1,7 +1,7 @@
 const RUST_FUNCTION = /^\s*pub(?:\(crate\))? (?:async )?fn (?<name>\w+)/;
 
 export default {
-  name: "Cloud console",
+  name: "Oxide-lite",
   sources: ["api/src", "console"],
   commands: { stamp: "make stamp" },
   extract: [

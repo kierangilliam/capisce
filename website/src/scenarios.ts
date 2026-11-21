@@ -12,8 +12,8 @@ export type Scenario = {
   play?: (stage: Stage) => Promise<void>;
 };
 
-const MAP = "/frames/cloud-console.html";
-const DIFF_MAP = "/frames/cloud-console-diff.html";
+const MAP = "/frames/oxide-lite.html";
+const DIFF_MAP = "/frames/oxide-lite-diff.html";
 const FLOW = "Creating an instance from the console";
 const FUNCTION = "instances.create_instance";
 const NOTE_ON_SELECTION = "Can we rename new to requested? Next to project_name it reads like a keyword.";

@@ -1,5 +1,5 @@
 [package]
-name = "cloud-console-api"
+name = "oxide-lite-api"
 version = "0.1.0"
 edition = "2021"
 publish = false

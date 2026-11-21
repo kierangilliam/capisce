@@ -171,9 +171,9 @@ Both ways install only the skills. The skills run the capisce command line, so k
 ## Examples
 
 - `examples/help-desk`: a Go web application and its map.
-- `examples/cloud-console`: a Rust API service and the TypeScript console that calls it, with a map that traces from a click in the console into the service.
+- `examples/oxide-lite`: a Rust API service and the TypeScript console that calls it, with a map that traces from a click in the console into the service.
 
-To look at one, build the page once (`pnpm install && pnpm build` here), then run `make serve` (cloud-console) or `make map-serve` (help-desk) in the example's folder and open http://127.0.0.1:8094.
+To look at one, build the page once (`pnpm install && pnpm build` here), then run `make serve` (oxide-lite) or `make map-serve` (help-desk) in the example's folder and open http://127.0.0.1:8094.
 
 ## Develop the page
 

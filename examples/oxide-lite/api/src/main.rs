@@ -16,7 +16,7 @@ use dropshot::ServerBuilder;
 #[tokio::main]
 async fn main() -> Result<(), String> {
     let log = ConfigLogging::StderrTerminal { level: ConfigLoggingLevel::Info }
-        .to_logger("cloud-console-api")
+        .to_logger("oxide-lite-api")
         .map_err(|error| format!("could not create the logger: {error}"))?;
     let config = ConfigDropshot {
         bind_address: "127.0.0.1:12220".parse().expect("a valid address"),

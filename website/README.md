@@ -20,7 +20,7 @@ pnpm preview                    # serves it at http://localhost:8213
 - `public/frames/*.html`: the same page with `scripts/frame_shim.js` at the top. The shim stands in for the server of `capisce serve`, so the figures can show comments.
 - `src/generated/side_by_side.json`: the function shown beside its Rust code at the top of the page.
 
-The Diffs figure reads `src/data/cloud-console-diff.json`, a real build with `--base main` of a small change to the cloud-console example. `pnpm diff-data` makes it again, for example after the example or the map format changes.
+The Diffs figure reads `src/data/oxide-lite-diff.json`, a real build with `--base main` of a small change to the oxide-lite example. `pnpm diff-data` makes it again, for example after the example or the map format changes.
 
 ## Deploy
 

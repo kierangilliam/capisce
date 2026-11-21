@@ -62,8 +62,8 @@ function side_by_side(): Plugin {
       const rust = data.code.split("\n").map(rust_line);
       const block =
         `<div class="side_by_side wide">` +
-        pseudo_column("Capisce", data.id, data.pseudo.split("\n")) +
         code_column("Rust", data.path, rust) +
+        pseudo_column("Capisce", data.id, data.pseudo.split("\n")) +
         `</div>`;
       return html.replace(SLOT, () => block);
     },

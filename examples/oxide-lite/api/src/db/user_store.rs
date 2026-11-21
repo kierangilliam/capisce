@@ -10,7 +10,7 @@ use std::hash::Hasher;
 /// A stand-in for a real password hash, so the example needs no extra crate. Do not use it for real passwords.
 pub fn password_digest(user_name: &str, password: &str) -> u64 {
     let mut hasher = DefaultHasher::new();
-    ("cloud-console", user_name, password).hash(&mut hasher);
+    ("oxide-lite", user_name, password).hash(&mut hasher);
     hasher.finish()
 }
 

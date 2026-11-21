@@ -14,8 +14,8 @@ const cli = join(repo, "bin", "capisce.mjs");
 const public_folder = join(website, "public");
 const generated = join(website, "src", "generated");
 const DATA_SLOT = "/*__CAPISCE_DATA__*/null";
-const EXAMPLES = ["cloud-console", "help-desk"];
-const FRAMED = ["cloud-console"];
+const EXAMPLES = ["oxide-lite", "help-desk"];
+const FRAMED = ["oxide-lite"];
 const SIDE_BY_SIDE = "sessions.login";
 
 if (!existsSync(viewer_page)) {
@@ -46,12 +46,12 @@ for (const example of EXAMPLES) {
   }
 }
 
-const diff_data = JSON.parse(readFileSync(join(website, "src", "data", "cloud-console-diff.json"), "utf8"));
-writeFileSync(join(public_folder, "frames", "cloud-console-diff.html"), with_shim(with_data(diff_data)));
+const diff_data = JSON.parse(readFileSync(join(website, "src", "data", "oxide-lite-diff.json"), "utf8"));
+writeFileSync(join(public_folder, "frames", "oxide-lite-diff.html"), with_shim(with_data(diff_data)));
 
-const symbol = maps["cloud-console"].symbols.find((each) => each.id === SIDE_BY_SIDE);
+const symbol = maps["oxide-lite"].symbols.find((each) => each.id === SIDE_BY_SIDE);
 if (symbol === undefined) {
-  console.error(`The cloud-console map has no "${SIDE_BY_SIDE}" any more. Pick another function in scripts/build_pages.mjs.`);
+  console.error(`The oxide-lite map has no "${SIDE_BY_SIDE}" any more. Pick another function in scripts/build_pages.mjs.`);
   process.exit(1);
 }
 const side_by_side = { id: symbol.id, pseudo: symbol.pseudo.join("\n"), code: symbol.src.code, path: symbol.src.path };

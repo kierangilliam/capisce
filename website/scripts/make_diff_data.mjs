@@ -1,4 +1,4 @@
-// Writes src/data/cloud-console-diff.json: the cloud-console map built on a feature branch with --base main.
+// Writes src/data/oxide-lite-diff.json: the oxide-lite map built on a feature branch with --base main.
 // It copies the example as last committed into a scratch git repository, commits it as main, makes a small change on a branch
 // (the code, its pseudo-code and a new step), stamps the map as an agent would, and builds with --base main.
 // Run it again after the example or the map format changes: `pnpm diff-data`.
@@ -11,7 +11,7 @@ import { fileURLToPath } from "node:url";
 const website = join(dirname(fileURLToPath(import.meta.url)), "..");
 const repo = join(website, "..");
 const cli = join(repo, "bin", "capisce.mjs");
-const out = join(website, "src", "data", "cloud-console-diff.json");
+const out = join(website, "src", "data", "oxide-lite-diff.json");
 const BRANCH = "rack-capacity-check";
 const INSTANCES_MAP = "maps/instances.map";
 
@@ -50,7 +50,7 @@ const EDITS = [
 
 const folder = mkdtempSync(join(tmpdir(), "capisce_diff_"));
 try {
-  const archive = execFileSync("git", ["archive", "HEAD:examples/cloud-console"], { cwd: repo, maxBuffer: 1 << 30 });
+  const archive = execFileSync("git", ["archive", "HEAD:examples/oxide-lite"], { cwd: repo, maxBuffer: 1 << 30 });
   execFileSync("tar", ["-x", "-C", folder], { input: archive });
   const map_folder = [".capisce", "capisce"].find((name) => existsSync(join(folder, name, INSTANCES_MAP)));
   const git = (...args) => execFileSync("git", args, { cwd: folder, stdio: "pipe" });

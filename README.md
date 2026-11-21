@@ -16,7 +16,7 @@ Capisce helps you understand a codebase at different levels of resolution.
 
 We start at your high-level domains.
 
-![The domains of the cloud-console example on one canvas, with how they relate.](docs/images/domains.png)
+![The domains of the oxide-lite example on one canvas, with how they relate.](docs/images/domains.png)
 
 Clicking on a domain opens up the core user stories within that domain.
 
@@ -70,7 +70,7 @@ npx skills add kierangilliam/capisce
 
 **Examples**
 
-*Oxide-lite*: This is meant to be a replication of Oxide’s Rust control plane interacting with a TypeScript frontend. I say “meant to be” because I gave boot to an agent to transpose Oxide’s codebase into this simplified form, but I will not pretend to be smart enough to claim it’s entirely correct. All that to say, any crimes against Oxide’s good taste or architectural intent were committed by the agent. I maintain plausible deniability. ([code](examples/cloud-console)) ([demo](https://capisce.software/demo/cloud-console/))
+*Oxide-lite*: This is meant to be a replication of Oxide’s Rust control plane interacting with a TypeScript frontend. I say “meant to be” because I gave boot to an agent to transpose Oxide’s codebase into this simplified form, but I will not pretend to be smart enough to claim it’s entirely correct. All that to say, any crimes against Oxide’s good taste or architectural intent were committed by the agent. I maintain plausible deniability. ([code](examples/oxide-lite)) ([demo](https://capisce.software/demo/oxide-lite/))
 
 *Help desk*: A help desk built in Go. ([code](examples/help-desk)) ([demo](https://capisce.software/demo/help-desk/))
 

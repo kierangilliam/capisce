@@ -178,17 +178,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "cloud-console-api"
-version = "0.1.0"
-dependencies = [
- "dropshot",
- "schemars",
- "serde",
- "tokio",
- "uuid",
-]
-
-[[package]]
 name = "cmake"
 version = "0.1.58"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -936,6 +925,17 @@ dependencies = [
  "indexmap",
  "serde",
  "serde_json",
+]
+
+[[package]]
+name = "oxide-lite-api"
+version = "0.1.0"
+dependencies = [
+ "dropshot",
+ "schemars",
+ "serde",
+ "tokio",
+ "uuid",
 ]
 
 [[package]]

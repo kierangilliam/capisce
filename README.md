@@ -1,173 +1,75 @@
-# capisce
+For the engineers who still want to understand the code,
 
-A map of a codebase at the level of business behavior.
+Capisce is an open source tool that helps you understand a codebase.
 
-capisce builds one page from your code and a small set of hand-written files:
+As your agents iterate on your codebase, they also write the core business logic in pseudo-code. This pseudo-code helps you see a compressed form of your codebase, removing boilerplate.
 
-- **Domains** on a canvas, with how they relate.
-- **Flows** in plain words, across endpoints.
-- **Pseudo-code** beside the real code, with a trace of how calls hand off.
-- **Changes**: what a branch changed, at this level.
-- **Comments and notes** on the page, with replies from the agent that looks after the map.
-- **Timings**: how long each endpoint takes where the project runs, from your own tracing tool.
+*One function of the cloud-console example, `instances.create_instance`, as Capisce pseudo-code beside its Rust.*
 
-Models, endpoints and functions are read from the code. Pseudo-code and flows are written by people or agents, and stamped against the code they describe. When that code changes, `capisce check` fails until the map is reviewed.
+**Zooming in, zooming out**
 
-## Use
+Capisce helps you understand a codebase at different levels of resolution.
 
-```sh
-pnpm install && pnpm build          # once, to build the page
-cd /path/to/project                 # or pass --root /path/to/project to any command
-node /path/to/capisce/bin/capisce.mjs build                  # write the page to .capisce/index.html
-node /path/to/capisce/bin/capisce.mjs build out.html         # or to a file of your choice
-node /path/to/capisce/bin/capisce.mjs check                  # fail when the map needs a review
-node /path/to/capisce/bin/capisce.mjs stamp                  # record that the map was reviewed
-node /path/to/capisce/bin/capisce.mjs serve --port 8094      # build, then serve the page with comments and notes
-node /path/to/capisce/bin/capisce.mjs timings                # fetch how long each endpoint takes
-node /path/to/capisce/bin/capisce.mjs comments               # print the comments that wait on a reply
-node /path/to/capisce/bin/capisce.mjs reply <id> "<text>" --done   # answer one in its thread
-```
+We start at your high-level domains.
 
-A project needs a `capisce.config.mjs` at its root. The setup skill says how to write one. Everything else capisce keeps for the project is in one `.capisce` folder beside it, described below. `check`, `stamp`, `comments` and `reply` need no install.
+*The domains of the cloud-console example on one canvas, with how they relate.*
 
-## Comments
+Clicking on a domain opens up the core user stories within that domain.
 
-`capisce serve` shows the page with comments turned on. Press **C**, then click anywhere on the page to pin a comment, or drag to draw. A comment can hold pictures: attach one, or paste it. Comments open in a small sheet at the bottom right. It lists the open ones; older ones are a click away, grouped by when they were left.
+*The Instances domain, with its flows, relations and models.*
 
-Each comment is a thread. An agent reads the waiting threads with `capisce comments`, makes the change, and answers with `capisce reply`. The page then shows a notice for the new reply. Opening the thread marks it read, and it can be marked unread again. A new message from the reader opens a finished thread again.
+Clicking a user story shows us a diagram that traces through the entire program. We also see pseudo-code of the high-level user story.
 
-Notes (**N**) are for ideas about the map as a whole.
+*The flow "Creating an instance from the console": a trace from the console into the API, beside its steps in plain words.*
 
-## Timings
+We can click a step in the flow diagram and see the code at that level.
 
-The page can show how long each endpoint takes where the project runs. Press **Tab**, or the **Timings** button, to turn them on. An endpoint's page then shows a line such as `42 ms typical · 310 ms slow · 1,840 requests in 7 days` above its trace, and the list on the left shows each endpoint's typical time. "Typical" is the median (p50). "Slow" is the 95th percentile (p95).
+*Clicking steps of the trace shows the pseudo-code of the function each one happens in.*
 
-capisce does not know your tracing tool, so the project plugs in a source. Name a module in `capisce.config.mjs`:
+The pseudo-code is derived directly from the actual code, which we can toggle in the upper right.
 
-```js
-export default {
-  // …
-  timings: "./.capisce/timings.mjs",
-};
-```
+*The `</>` button swaps the pseudo-code for the real code.*
 
-The module's default export (or an export named `timings`) is a function. It gets the map's endpoint ids and returns a row for each endpoint it has numbers for:
+**Comments**
 
-```js
-export default async function timings({ ids, symbols }) {
-  // Ask your tracing tool, for example Sentry or OpenTelemetry, for each endpoint's request count and durations.
-  return {
-    window: "7d",          // optional: the time the numbers cover, such as "24h" or "7d"
-    source: "production",  // optional: where they are from
-    rows: [
-      { id: "GET /api/orders", count: 1840, p50_ms: 42, p95_ms: 310, link: "https://traces.example.com/…" },
-    ],
-  };
-}
-```
+This surface is interactive. You can leave your agents notes by highlighting…
 
-- **`id`** is the endpoint's id in the map, such as `GET /api/orders/:id`. A row with any other id is dropped, so turn your tool's names into the map's.
-- **`count`**, **`p50_ms`** and **`p95_ms`** are numbers. Durations are in milliseconds.
-- **`link`** is optional. The line on the endpoint's page then opens it in a new tab, for example the endpoint's traces.
-- **`steps`** is optional and kept for later: `[{ stage: 0, p50_ms, p95_ms }]`, one for each stage of the endpoint's pseudo-code, counted from 0. The page does not show them yet.
-- Returning the list of rows alone works too.
+*Highlighting a name in the pseudo-code shows a Comment button.*
+
+… or by using the comment box (toggleable by <kbd>c</kbd>).
+
+*With comments on, a click drops a pin with a note and a drag draws on the page.*
+
+**Diffs**
+
+Capisce’s pseudo-code is saved alongside your codebase in a `.capisce/` folder. This allows Capisce to show you a diff of your feature branch against main.
+
+*The Changes page of a branch, and a function with its added and removed lines.*
+
+**Glossary**
+
+You can keep definitions of common domain models in Capisce.
+
+*Clicking a term in the pseudo-code shows its definition.*
+
+**Skills**
+
+Capisce includes skills so that your agents will automatically maintain the pseudo-code reflection of your codebase.
 
 ```sh
-node /path/to/capisce/bin/capisce.mjs timings
+npx skills add kierangilliam/capisce
 ```
 
-This runs the source and writes `.capisce/timings.json`, as `{ fetched_at, window, source, rows }`. It says how many endpoints got timings and how many have none. Run it again whenever you want fresher numbers: the served page reads the file on each load, with no rebuild. The numbers are not part of the built page, and git ignores `timings.json`. A page with no timings shows no button.
+- `/capisce:setup` This builds Capisce’s state on a new codebase. To be used once during setup.
+- `/capisce:update` This updates Capisce’s state by writing pseudo-code and updating the glossary for new code changes.
+- `/capisce:address-comments` An agent will pull your comments and address them, either replying to your comment or making a change to your codebase.
 
-`examples/help-desk/.capisce/timings.mjs` is a small source to copy from. Its numbers are made up.
+**Examples**
 
-## The `.capisce` folder
+*Oxide-lite*: This is meant to be a replication of Oxide’s Rust control plane interacting with a TypeScript frontend. I say “meant to be” because I gave boot to an agent to transpose Oxide’s codebase into this simplified form, but I will not pretend to be smart enough to claim it’s entirely correct. All that to say, any crimes against Oxide’s good taste or architectural intent were committed by the agent. I maintain plausible deniability. ([code](examples/cloud-console)) ([demo](https://capisce.software/demo/cloud-console/))
 
-Everything capisce keeps for a project lives in one folder, `.capisce` at the project's root. The map in it is committed with the code. The rest is local to one checkout, and git ignores it.
+*Help desk*: A help desk built in Go. ([code](examples/help-desk)) ([demo](https://capisce.software/demo/help-desk/))
 
-```text
-.capisce/
-  maps/<domain>.map          committed   the pseudo-code, flows and glossary, one file for each domain
-  maps/shared.map            committed   names and terms every domain uses
-  domains.map                committed   the domains and how they relate
-  stamps.json                committed   what was reviewed, written by `capisce stamp`
-  models.mjs, timings.mjs    committed   the project's own extractors and source of timings, if it has any
-  .gitignore                 committed   written by capisce: it lists the local files below
-  index.html                 local       the built page
-  timings.json               local       how long each endpoint takes, written by `capisce timings`
-  comments.json              local       the comments and their threads
-  comments/screenshots/      local       the pictures attached to comments
-  notes.json                 local       the notes
-```
+**Reference**
 
-`capisce.config.mjs` stays at the project's root. Its `maps`, `domains` and `stamps` default to the paths above, so most configs leave them out.
-
-**Changes come from the committed map.** `capisce build --base <git ref>` reads the map and the code as they were at that commit and compares them with the checkout, so the page shows what a branch changed. This works because the map files are in git beside the code.
-
-**What git ignores.** The first time capisce writes into the folder, it adds `.capisce/.gitignore` if there is none. Commit that file. It ignores `*.html`, `timings.json`, `comments.json`, `comments/`, `notes.json` and `*.tmp`. The page is built and the timings are fetched, so they never belong in git. Comments and notes are ignored too: they are one reader's review conversation, they change with every reply, and they can hold screenshots. To share them through git, delete the `comments.json`, `comments/` and `notes.json` lines from `.capisce/.gitignore`. capisce never rewrites a `.gitignore` that is already there.
-
-**Local files somewhere else.** `--state <folder>` or the `CAPISCE_STATE` environment variable keeps the local files (the page, timings, comments and notes) in another folder, for example to share one set of comments between several checkouts of a project. The map is still read from `.capisce` in each checkout.
-
-### Moving an existing map
-
-Older projects keep the map in a `capisce/` folder, or wherever their config says. Those paths keep working. To move to the single folder:
-
-```sh
-mkdir -p .capisce
-git mv capisce/* .capisce/        # maps/, domains.map, stamps.json and your own modules
-```
-
-Then remove `maps`, `domains` and `stamps` from `capisce.config.mjs` (or point them at `.capisce/…`), and change paths such as `./capisce/models.mjs` to `./.capisce/models.mjs`. Take `.capisce/` out of the project's root `.gitignore`, run `capisce build`, and commit `.capisce/.gitignore` with the move. `capisce check` should pass with no new stamp: moving the map does not change the code it describes.
-
-A branch comparison still works across the move. When the commit named by `--base` has no map at today's paths, capisce looks where that commit's own `capisce.config.mjs` says, then in `capisce/`. To read those paths it loads that one file from the older commit. If the file cannot be loaded on its own, for example because it imports other modules, only the `capisce/` fallback is used. When the older commit has no map at all, the page is built without changes.
-
-`node src/server.mjs <folder>` serves the page in a `.capisce` folder without building, on `PORT`. Use it to keep a page up as a service and rebuild `index.html` beside it. It serves the page, comments, notes and timings, and no other file of the folder.
-
-## Skills
-
-Three skills tell an agent how to work with a map:
-
-- **setup**: this builds capisce's state on a new codebase. To be used once during setup.
-- **update**: this updates capisce's state by writing pseudo-code and updating the glossary for new code changes.
-- **address-comments**: an agent will pull your comments and address them, either replying to your comment or making a change to your codebase.
-
-The glossary is the map's terms: the words of the business, each said once in plain words.
-
-Each skill is one file, `skills/<name>/SKILL.md`. `node bin/capisce.mjs skill <name>` prints one, for any agent.
-
-### Install the skills
-
-**As a Claude Code plugin.** This repository is a plugin named `capisce`, and a marketplace that lists it. In Claude Code:
-
-```text
-/plugin marketplace add <owner>/capisce
-/plugin install capisce@capisce
-```
-
-The skills then appear as `/capisce:setup`, `/capisce:update` and `/capisce:address-comments`. To try the plugin from a clone without installing it, start Claude Code with `claude --plugin-dir /path/to/capisce`.
-
-**With the skills CLI**, for other agents:
-
-```sh
-npx skills add <owner>/capisce
-```
-
-This copies the skills into the project for the agents you pick. They keep their plain names there: `setup`, `update` and `address-comments`. If `setup` or `update` clashes with a skill you already have, install one skill at a time under another name, for example `npx skills add <owner>/capisce --skill setup --rename capisce-setup`.
-
-Both ways install only the skills. The skills run the capisce command line, so keep a clone of this repository as well.
-
-## Examples
-
-- `examples/help-desk`: a Go web application and its map.
-- `examples/cloud-console`: a Rust API service and the TypeScript console that calls it, with a map that traces from a click in the console into the service.
-
-To look at one, build the page once (`pnpm install && pnpm build` here), then run `make serve` (cloud-console) or `make map-serve` (help-desk) in the example's folder and open http://127.0.0.1:8094.
-
-## Develop the page
-
-The page is a Svelte app in `viewer/`, built into one file at `dist/viewer.html`.
-
-```sh
-node bin/capisce.mjs build --json viewer/dev-data.json --root /path/to/project
-pnpm dev        # then open http://localhost:5173/viewer.html
-pnpm check
-```
+The commands, the config file, the map format, comments, timings and installing the skills are in [docs/reference.md](docs/reference.md). The same page with moving pictures is at [capisce.software](https://capisce.software).

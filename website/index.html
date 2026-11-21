@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="light" />
+    <title>Capisce</title>
+    <meta name="description" content="Capisce is an open source tool that helps you understand a codebase." />
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect x='3' y='3' width='26' height='26' rx='4' fill='white' stroke='black' stroke-width='2'/%3E%3Ctext x='16' y='22.5' font-family='Georgia,serif' font-size='18' text-anchor='middle'%3Ec%3C/text%3E%3C/svg%3E" />
+  </head>
+  <body>
+    <main class="document">
+      <p>For the engineers who still want to understand the code,</p>
+
+      <p>Capisce is an open source tool that helps you understand a codebase.</p>
+
+      <p>As your agents iterate on your codebase, they also write the core business logic in pseudo-code. This pseudo-code helps you see a compressed form of your codebase, removing boilerplate.</p>
+
+      <!--side-by-side-->
+
+      <p><strong>Zooming in, zooming out</strong></p>
+
+      <p>Capisce helps you understand a codebase at different levels of resolution.</p>
+
+      <p>We start at your high-level domains.</p>
+
+      <figure class="wide" data-figure="domains">
+        <p class="figure_alt">The domains of the example cloud console on one canvas: Console, Access, Projects, Instances and Disks, inside the Rack, with arrows for how they relate.</p>
+      </figure>
+
+      <p>Clicking on a domain opens up the core user stories within that domain.</p>
+
+      <figure class="wide" data-figure="domain">
+        <p class="figure_alt">Clicking the Instances domain opens its page, with its flows “Creating an instance from the console” and “Stopping an instance”, its relations and its models.</p>
+      </figure>
+
+      <p>Clicking a user story shows us a diagram that traces through the entire program. We also see pseudo-code of the high-level user story.</p>
+
+      <figure class="wide" data-figure="flow">
+        <p class="figure_alt">Clicking the flow “Creating an instance from the console” opens a trace diagram across the console and the API beside the flow’s steps in plain words.</p>
+      </figure>
+
+      <p>We can click a step in the flow diagram and see the code at that level.</p>
+
+      <figure class="wide" data-figure="steps">
+        <p class="figure_alt">Clicking steps of the trace diagram one after another shows the pseudo-code of the function each step happens in.</p>
+      </figure>
+
+      <p>The pseudo-code is derived directly from the actual code, which we can toggle in the upper right.</p>
+
+      <figure class="wide" data-figure="real_code">
+        <p class="figure_alt">The &lt;/&gt; button in the upper right of the code swaps the pseudo-code of create_instance for its real Rust code, and back.</p>
+      </figure>
+
+      <p><strong>Comments</strong></p>
+
+      <p>This surface is interactive. You can leave your agents notes by highlighting…</p>
+
+      <figure class="wide" data-figure="selection">
+        <p class="figure_alt">Highlighting the name “new” in the pseudo-code shows a Comment button; the comment asks to rename it so it is clearer.</p>
+      </figure>
+
+      <p>… or by using the comment box (toggleable by <kbd>c</kbd>).</p>
+
+      <figure class="wide" data-figure="comment_mode">
+        <p class="figure_alt">Pressing c turns on comments: a click drops a pin and opens a note, and a drag draws a circle around a step of the trace.</p>
+      </figure>
+
+      <p><strong>Diffs</strong></p>
+
+      <p>Capisce’s pseudo-code is saved alongside your codebase in a <code>.capisce/</code> folder. This allows Capisce to show you a diff of your feature branch against main.</p>
+
+      <figure class="wide" data-figure="diff">
+        <p class="figure_alt">The Changes page of a feature branch lists the changed endpoint and function; opening the function shows its added and removed pseudo-code lines and a new step in the trace.</p>
+      </figure>
+
+      <p><strong>Glossary</strong></p>
+
+      <p>You can keep definitions of common domain models in Capisce.</p>
+
+      <figure class="wide" data-figure="glossary">
+        <p class="figure_alt">Clicking the term store_lock in the pseudo-code shows its definition: the API keeps everything in memory behind one lock.</p>
+      </figure>
+
+      <p><strong>Skills</strong></p>
+
+      <p>Capisce includes skills so that your agents will automatically maintain the pseudo-code reflection of your codebase.</p>
+
+      <pre class="install"><code>npx skills add kierangilliam/capisce</code></pre>
+
+      <ul>
+        <li><code>/capisce:setup</code> This builds Capisce’s state on a new codebase. To be used once during setup.</li>
+        <li><code>/capisce:update</code> This updates Capisce’s state by writing pseudo-code and updating the glossary for new code changes.</li>
+        <li><code>/capisce:address-comments</code> An agent will pull your comments and address them, either replying to your comment or making a change to your codebase.</li>
+      </ul>
+
+      <p><strong>Examples</strong></p>
+
+      <p><em>Oxide-lite</em>: This is meant to be a replication of Oxide’s Rust control plane interacting with a TypeScript frontend. I say “meant to be” because I gave boot to an agent to transpose Oxide’s codebase into this simplified form, but I will not pretend to be smart enough to claim it’s entirely correct. All that to say, any crimes against Oxide’s good taste or architectural intent were committed by the agent. I maintain plausible deniability. (<a href="https://github.com/kierangilliam/capisce/tree/main/examples/cloud-console">code</a>) (<a href="/demo/cloud-console/">demo</a>)</p>
+
+      <p><em>Help desk</em>: A help desk built in Go. (<a href="https://github.com/kierangilliam/capisce/tree/main/examples/help-desk">code</a>) (<a href="/demo/help-desk/">demo</a>)</p>
+    </main>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

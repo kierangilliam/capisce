@@ -1,0 +1,10 @@
+node_modules
+dist
+public/demo
+public/frames
+src/generated
+.env
+.dev.vars
+.wrangler
+wrangler.toml
+wrangler.jsonc

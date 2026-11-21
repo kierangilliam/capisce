@@ -1,0 +1,12 @@
+{
+  "name": "capisce",
+  "owner": { "name": "capisce contributors" },
+  "description": "The capisce plugin: skills to set up a map of a codebase, keep it up to date, and answer the comments left on it.",
+  "plugins": [
+    {
+      "name": "capisce",
+      "source": "./",
+      "description": "Set up a capisce map, keep it up to date, and answer the comments left on it."
+    }
+  ]
+}

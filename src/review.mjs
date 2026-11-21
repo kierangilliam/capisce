@@ -56,7 +56,7 @@ export function review_needed(map, root, config) {
   if (lines.length > 0) {
     lines.push(
       `For each one, read the code and update its block in ${config.maps}/ so it says what the code now does.`,
-      `Add a block for new code, and update any flow whose steps changed. The maintain skill has the format.`,
+      `Add a block for new code, and update any flow whose steps changed. The update skill has the format.`,
       `Then run: ${config.commands.stamp}`,
     );
   }

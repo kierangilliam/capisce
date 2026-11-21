@@ -28,7 +28,7 @@ node /path/to/capisce/bin/capisce.mjs comments               # print the comment
 node /path/to/capisce/bin/capisce.mjs reply <id> "<text>" --done   # answer one in its thread
 ```
 
-A project needs a `capisce.config.mjs` at its root. `check`, `stamp`, `comments` and `reply` need no install.
+A project needs a `capisce.config.mjs` at its root. The setup skill says how to write one. `check`, `stamp`, `comments` and `reply` need no install.
 
 ## Comments
 
@@ -101,11 +101,36 @@ Everything capisce keeps for a project that is not the map itself lives in one s
 
 ## Skills
 
-- `skills/build-map`: build a map for a codebase that has none.
-- `skills/maintain`: keep a map in step with the code.
-- `skills/address-comments`: answer the comments a reader left on the page.
+Three skills tell an agent how to work with a map:
 
-`node bin/capisce.mjs skill <name>` prints one.
+- **setup**: this builds capisce's state on a new codebase. To be used once during setup.
+- **update**: this updates capisce's state by writing pseudo-code and updating the glossary for new code changes.
+- **address-comments**: an agent will pull your comments and address them, either replying to your comment or making a change to your codebase.
+
+The glossary is the map's terms: the words of the business, each said once in plain words.
+
+Each skill is one file, `skills/<name>/SKILL.md`. `node bin/capisce.mjs skill <name>` prints one, for any agent.
+
+### Install the skills
+
+**As a Claude Code plugin.** This repository is a plugin named `capisce`, and a marketplace that lists it. In Claude Code:
+
+```text
+/plugin marketplace add <owner>/capisce
+/plugin install capisce@capisce
+```
+
+The skills then appear as `/capisce:setup`, `/capisce:update` and `/capisce:address-comments`. To try the plugin from a clone without installing it, start Claude Code with `claude --plugin-dir /path/to/capisce`.
+
+**With the skills CLI**, for other agents:
+
+```sh
+npx skills add <owner>/capisce
+```
+
+This copies the skills into the project for the agents you pick. They keep their plain names there: `setup`, `update` and `address-comments`. If `setup` or `update` clashes with a skill you already have, install one skill at a time under another name, for example `npx skills add <owner>/capisce --skill setup --rename capisce-setup`.
+
+Both ways install only the skills. The skills run the capisce command line, so keep a clone of this repository as well.
 
 ## Examples
 

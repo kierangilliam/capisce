@@ -1,13 +1,13 @@
 ---
-name: build-map
-description: Build a capisce map for a codebase that has none: write the config, lay out the domains, and write the first pseudo-code and flows. Use when asked to set up capisce or to map a codebase for the first time.
+name: setup
+description: This builds capisce's state on a new codebase. To be used once during setup. Use when asked to set up capisce or to map a codebase for the first time. It writes the config, lays out the domains, and writes the first pseudo-code, flows and glossary.
 ---
 
-# Build a map for the first time
+# Set up capisce on a codebase
 
-A capisce map lets someone read a codebase at the level of business behavior: its domains and how they relate, the flows through them, and pseudo-code beside the real code. Building one is five steps. Read the maintain skill too (`capisce skill maintain`): it has the format of a block and the rules for writing one.
+A capisce map lets someone read a codebase at the level of business behavior: its domains and how they relate, the flows through them, and pseudo-code beside the real code. Building one is five steps. Read the update skill too (`capisce skill update`): it has the format of a block and the rules for writing one.
 
-Run capisce as `node <capisce>/bin/capisce.mjs <command>` from the root of the project. Add commands that wrap `build`, `check` and `stamp` so others do not need the path: package scripts, a Makefile, or whatever the project already uses.
+To run capisce, clone its repository and build the page once (`pnpm install && pnpm build` in that folder). Then run `node <capisce>/bin/capisce.mjs <command>` from the root of the project. `capisce skill <name>` prints any of the skills named here. Add commands that wrap `build`, `check` and `stamp` so others do not need the path: package scripts, a Makefile, or whatever the project already uses.
 
 ## 1. Learn the codebase's shape
 
@@ -94,7 +94,7 @@ The build fails until every file the config reads, and every model, is in a doma
 
 ## 4. Write the map, one domain at a time
 
-Create `shared.map` in the maps folder first, for names every domain uses (the signed-in user, the helper that reads a request body, and so on). Then, for each domain, write `<domain>.map`:
+Create `shared.map` in the maps folder first, for names every domain uses (the signed-in user, the helper that reads a request body, and so on). The first glossary goes there too: a `kind: term` block for each word of the business a new reader would have to ask about, such as "workspace" or "seat". The update skill has the format. Then, for each domain, write `<domain>.map`:
 
 - A block for everything the check requires.
 - Blocks for the functions those lean on, where the behavior is worth reading.
@@ -111,6 +111,6 @@ Write only what the code does. Each author should reread a few of their blocks a
 - `capisce build out.html` with every map file. Fix any id used twice and any stage that points at nothing.
 - Read the domain descriptions again against what the authors found, and correct them.
 - `capisce stamp`, then `capisce check` to confirm it passes. Commit the map files, the config and the stamps.
-- Add `capisce check` to the project's own checks, and tell contributors about the maintain skill.
+- Add `capisce check` to the project's own checks, and tell contributors about the update skill (`capisce skill update`).
 - `capisce serve` builds the page and serves it with comments and notes, for review. The page, the comments and the notes are kept in `.capisce` at the project's root: add `.capisce/` to the project's ignore file, or only `.capisce/index.html` if the team wants to share comments.
 - Tell contributors about the address-comments skill (`capisce skill address-comments`): it is how an agent answers what a reader left on the page.

@@ -1,13 +1,13 @@
 ---
-name: maintain
-description: Keep a capisce map in step with the code. Use when `capisce check` fails, when you add or change code the map covers, or when you write or edit pseudo-code or flows in the map files.
+name: update
+description: This updates capisce's state by writing pseudo-code and updating the glossary for new code changes. Use when `capisce check` fails, when you add or change code the map covers, or when you write or edit pseudo-code, flows or glossary terms in the map files.
 ---
 
-# Maintain the map
+# Update the map
 
-A capisce map is one page for reading a codebase at the level of business behavior. Models, endpoints and functions are read from the code. People and agents write only the pseudo-code and the flows, in the map files. `capisce.config.mjs` at the root of the project says where those files are and what is read from the code.
+A capisce map is one page for reading a codebase at the level of business behavior. Models, endpoints and functions are read from the code. People and agents write only the pseudo-code, the flows and the glossary, in the map files. `capisce.config.mjs` at the root of the project says where those files are and what is read from the code.
 
-Run capisce the way the project wraps it (look for a script that calls it), or as `node <capisce>/bin/capisce.mjs <command>` from the project root.
+Run capisce the way the project wraps it (look for a package script, a Makefile target or a script that calls it). If there is none, clone the capisce repository and run `node <capisce>/bin/capisce.mjs <command>` from the project's root. `build` and `serve` also need the page built once: `pnpm install && pnpm build` in the capisce folder. `capisce skill <name>` prints any of the skills named here.
 
 - `capisce check` names what needs an update. It fails when mapped code changed, when code that must be mapped has no pseudo-code, and when a stamp is out of date.
 - `capisce stamp` records that you reviewed the map against the code. Run it last, once the map says what the code does.
@@ -22,8 +22,9 @@ Run capisce the way the project wraps it (look for a script that calls it), or a
 1. Read the code it names. Open the function: do not guess from its name.
 2. Update the block so it says what the code now does. Add a block for new code. Delete the block for code that is gone.
 3. Update every flow that passes through what you changed.
-4. If a domain's description or relations no longer hold, fix them in the domains file.
-5. Run `capisce check` again, then `capisce stamp`.
+4. Update the glossary: add a term for a new word of the business, and correct one whose meaning the change moved.
+5. If a domain's description or relations no longer hold, fix them in the domains file.
+6. Run `capisce check` again, then `capisce stamp`.
 
 Never stamp to make the check pass without reading the code. The stamp says a person or agent compared the two.
 
@@ -50,7 +51,7 @@ route POST /api/orders/:id/refund(id, amount=None):
 ```
 
 - **`===` id.** An endpoint is `METHOD path`, with the path exactly as the code has it. A function is `<file name without its extension>.<function name>`, for example `payment_service.refund`, unless the project's config names functions another way: use the ids `capisce build --json` gives. A flow or a term is a plain name. An id is used once across all map files.
-- **`kind`.** `route`, `def`, `flow` or `term`. A term has a `doc` and a `src`, and no pseudo-code. If the project generates some kinds from the code (models, for example), never write those by hand.
+- **`kind`.** `route`, `def`, `flow` or `term`. A term is an entry in the glossary: it has a `doc` and a `src`, and no pseudo-code. If the project generates some kinds from the code (models, for example), never write those by hand.
 - **`group`.** Endpoints only: a short plain name for endpoints that belong together, such as "Refunds".
 - **`src`.** `<path> :: <the start of the line the code begins on>`. It must match exactly one line of the file. Leave it out when the block's id is one capisce reads from the code (an endpoint or a function it finds): the block then describes that code.
 - **`also`.** Optional: more code the pseudo-code describes, as `<path> :: <line start>` entries joined by ` ; `. Use it when the `src` line only passes the call on, such as a route registration that names its handler, or when the pseudo-code states a rule held in a constant elsewhere, so a change there asks for a review too. Code named only on an `also` line should not also be read as a function, or it shows up as one with no pseudo-code.
@@ -88,6 +89,22 @@ A name that matches an id becomes a link, so write calls into other files in ful
 - Everything the check says must be mapped. The project's config decides what that is; endpoints usually are.
 - The functions those lean on, where the behavior is worth reading: access rules, state changes, anything with a branch. Skip one-line reads.
 - Local helpers several endpoints share, such as the one that finds a thing and checks the caller may touch it.
+
+## The glossary
+
+The glossary is the map's `kind: term` blocks: the words of the business, each said once in plain words. A reader sees a term's meaning wherever its name appears in pseudo-code.
+
+```text
+=== seat
+kind: term
+src: server/services/billing_service.ts :: export const SEAT_PRICE
+doc: One person's place in a workspace's plan. A workspace pays for each seat, filled or not.
+```
+
+- Add a term when a change brings in a word a new reader would have to ask about, or a name several map files use that is not a function or a model.
+- Update a term when the code changes what the word means, such as a new state or a rule that moved. Delete it when nothing uses the word any more.
+- `src` points at the code that best holds the meaning, so a change there asks for a review of the term.
+- Terms every domain uses live in `shared.map`. One domain's own terms live in its map file.
 
 ## Flows
 

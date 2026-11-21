@@ -20,7 +20,7 @@ const DEFAULTS = {
 export async function load_config(root) {
   const path = join(root, CONFIG_FILE);
   if (!existsSync(path)) {
-    throw new Error(`No ${CONFIG_FILE} in ${root}. The build-map skill says how to write one.`);
+    throw new Error(`No ${CONFIG_FILE} in ${root}. The setup skill says how to write one.`);
   }
   const config = (await import(pathToFileURL(path).href)).default;
   return { ...DEFAULTS, ...config, commands: { ...DEFAULTS.commands, ...config.commands } };

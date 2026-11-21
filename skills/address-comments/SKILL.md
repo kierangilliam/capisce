@@ -1,13 +1,13 @@
 ---
 name: address-comments
-description: Answer the comments a reader left on a capisce map. Use when asked to address, answer or go through the comments on the map, or when `capisce comments` lists threads waiting on a reply.
+description: An agent will pull your comments and address them, either replying to your comment or making a change to your codebase. Use when asked to address, answer or go through the comments on the map, or when `capisce comments` lists threads waiting on a reply.
 ---
 
 # Address the comments
 
 A reader leaves comments on the page: a pin or a drawing on some part of it, some words, sometimes a picture. Each comment is a thread. You change what the comment asks for, then answer in the thread. The reader gets a notice for every answer, so the thread is how they learn what you did.
 
-Run capisce the way the project wraps it (look for a script that calls it), or as `node <capisce>/bin/capisce.mjs <command>` from the project root. The comments are files in the project's state folder, `.capisce` unless the project says otherwise, so these commands work with or without the page being served.
+Run capisce the way the project wraps it (look for a package script, a Makefile target or a script that calls it). If there is none, clone the capisce repository and run `node <capisce>/bin/capisce.mjs <command>` from the project's root. `capisce skill <name>` prints any of the skills named here. The comments are files in the project's state folder, `.capisce` unless the project says otherwise, so these commands work with or without the page being served.
 
 ## 1. Read what is waiting
 
@@ -38,7 +38,7 @@ A thread looks like this:
 
 ## 2. Decide what each thread asks for
 
-- **A change to the map** (a description that is wrong, pseudo-code that is unclear, a flow that misses a step, a relation that does not hold): read the code the comment is about, make the change, and follow the maintain skill (`capisce skill maintain`), including `capisce check` and `capisce stamp`.
+- **A change to the map** (a description that is wrong, pseudo-code that is unclear, a flow that misses a step, a relation that does not hold): read the code the comment is about, make the change, and follow the update skill (`capisce skill update`), including `capisce check` and `capisce stamp`.
 - **A change to the code**: only make it if you were asked to work on the code. Otherwise say what you found and leave the thread open.
 - **A question**: answer it from the code, not from the map. If the answer shows the map is wrong, fix the map too.
 - **Feedback on the page itself** (how capisce looks or works, not what this map says): you cannot fix that in the project. Say so in the reply, and pass it on to whoever maintains capisce if you can.

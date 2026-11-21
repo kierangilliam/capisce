@@ -7,7 +7,7 @@
 // capisce comments [--all]                                                         print the comments waiting on a reply
 // capisce reply <comment id> <text> [--done]                                       answer a comment in its thread
 // capisce timings                                                                  fetch how long each endpoint takes, from the project's source
-// capisce skill <name>                                                             print a skill
+// capisce skill <name>                                                             print a skill: setup, update or address-comments
 // Every command reads capisce.config.mjs from --root <folder>, or from the current folder.
 // The built page, comments, notes and timings live in the state folder: .capisce in the root, or --state <folder>,
 // or CAPISCE_STATE.
@@ -24,6 +24,7 @@ import { fetch_timings, timings_path, write_timings } from "../src/timings.mjs";
 const home = join(dirname(fileURLToPath(import.meta.url)), "..");
 const VIEWER = join(home, "dist", "viewer.html");
 const DATA_SLOT = "/*__CAPISCE_DATA__*/null";
+const FORMER_SKILL_NAMES = { "build-map": "setup", maintain: "update" };
 
 const args = process.argv.slice(2);
 function option(name) {
@@ -82,9 +83,9 @@ async function map_at(ref, config) {
 
 async function run() {
   if (command === "skill") {
-    const path = join(home, "skills", target ?? "", "SKILL.md");
+    const path = join(home, "skills", FORMER_SKILL_NAMES[target] ?? target ?? "", "SKILL.md");
     if (!existsSync(path)) {
-      throw new Error(`No skill named "${target}". The skills are: build-map, maintain, address-comments.`);
+      throw new Error(`No skill named "${target}". The skills are: setup, update, address-comments.`);
     }
     console.log(readFileSync(path, "utf8"));
     return;

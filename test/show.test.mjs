@@ -1,12 +1,13 @@
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
+import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { test } from "node:test";
 import { fileURLToPath } from "node:url";
 import { name_index } from "../src/pseudo.mjs";
 import { mark_changes } from "../src/review.mjs";
 import { file_names, render_section, unknown_id_message } from "../src/show.mjs";
-import { theme_tokens } from "../src/theme.mjs";
+import { style_of, theme_tokens } from "../src/theme.mjs";
 
 const home = join(dirname(fileURLToPath(import.meta.url)), "..");
 const LONG_LINE = `    if basket.total < 3 and basket.note != "rush <now>" & more:`;
@@ -191,4 +192,21 @@ test("a term has no note about missing pseudo-code", () => {
   const term = { ...symbol("basket", "What a customer means to buy.", []), kind: "term" };
   const html = render_section(term, name_index([term]), { format: "html", with_diff: false });
   assert.doesNotMatch(html, /No pseudo-code yet/);
+});
+
+test("the page's style sheets still have every token and rule a section is drawn from", () => {
+  for (const theme of ["light", "dark"]) {
+    const tokens = theme_tokens(theme);
+    for (const name of ["background", "foreground", "muted", "border", "added", "removed"]) {
+      assert.match(tokens[name] ?? "", /^#[0-9a-f]{6}$/i, `${theme} ${name}`);
+    }
+    assert.match(tokens.mono, /monospace$/);
+    assert.match(tokens.sans, /sans-serif$/);
+  }
+  const source = readFileSync(join(home, "src", "show.mjs"), "utf8");
+  const selectors = [...source.matchAll(/(?:style_of|font_of)\("([^"]+)"\)/g)].map((match) => match[1]);
+  assert.ok(selectors.length > 5);
+  for (const selector of selectors) {
+    assert.notDeepEqual(style_of(selector), {}, `no rule is written as ${selector}`);
+  }
 });

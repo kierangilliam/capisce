@@ -21,7 +21,13 @@ Read `references/pr_description_template.md`. The description follows it and hol
 - If there is none, look at `git status --short --branch` and at the commits on the branch. Commit the changes that belong to the task if they are not committed, push the branch, and create the pull request. Follow the project's own rules for commits, branches and pull requests.
 - Ask the user which pull request they mean only when the branch has no work of its own and there is nothing safe to create.
 
-Keep the number and the base branch (`baseRefName`). Run `git fetch origin <base branch>` so the comparison below is with the base as it is now.
+Keep the number and the base branch (`baseRefName`). Run `git fetch origin <base branch>`, then find the commit where this branch left it:
+
+```sh
+git merge-base HEAD origin/<base branch>
+```
+
+Every comparison below is with that commit, written `<base commit>`. It is what the pull request's own diff compares with. Do not compare with `origin/<base branch>` itself: once the base branch has moved on, its newer work would show up as changes of this pull request.
 
 ## 3. Make sure the map is true
 
@@ -34,7 +40,7 @@ Run `capisce check`. If it fails, update the map first with the update skill (`c
 - See what the pull request changes in the map:
 
   ```sh
-  capisce changes --base origin/<base branch>
+  capisce changes --base <base commit>
   ```
 
   It lists each changed symbol: its id, kind, domain, status (added, changed or removed) and the parts that changed (doc, pseudo, flow, code). `--json` prints the same as `{ "base", "head", "changes": [...] }`.
@@ -42,7 +48,7 @@ Run `capisce check`. If it fails, update the map first with the update skill (`c
 - Make one image for each changed symbol, in a folder outside the repository:
 
   ```sh
-  capisce show --changed --base origin/<base branch> --format svg --out /tmp/pr-<number>/images
+  capisce show --changed --base <base commit> --format svg --out /tmp/pr-<number>/images
   ```
 
   It prints `id -> path` for every file it writes (`--json` prints a list of `{ "id", "path" }`). Each image is one symbol's name, kind, description and pseudo-code, with added and removed lines marked and a badge for its status. Use the paths it prints: do not guess the file names.
@@ -92,7 +98,7 @@ gh pr edit <number> --body-file /tmp/pr-<number>/description.md \
 **If `gh` has no `--attach`, or an upload fails:** do not commit the images to the branch. Show the same symbols as text instead:
 
 ```sh
-capisce show "<symbol id>" --base origin/<base branch> --format diff
+capisce show "<symbol id>" --base <base commit> --format diff
 ```
 
 Paste each result into the description in a fenced `diff` block under its caption, then publish with `gh pr edit <number> --body-file /tmp/pr-<number>/description.md`. Tell the user where the image files are, so they can drag them into the description.

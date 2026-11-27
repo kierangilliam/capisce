@@ -8,9 +8,7 @@ import { fileURLToPath } from "node:url";
 const STYLES = join(dirname(fileURLToPath(import.meta.url)), "..", "viewer", "src", "styles");
 const DARK_ROOT = ':root[data-theme="dark"]';
 const TOKEN_PREFIX = "--cp_";
-const TOKEN_NAMES = [
-  "background", "foreground", "muted", "border", "soft", "module", "added", "removed", "mono", "sans", "radius",
-];
+const COMMENT = /\/\*[^]*?\*\//g;
 
 /** The rules of a style sheet that sit outside any `@media` or `@container` block, as `{ selector, declarations }`. */
 function top_level_rules(css) {
@@ -52,7 +50,9 @@ function declarations_of(body) {
   return declarations;
 }
 
-const rules = ["theme.css", "code.css", "pages.css"].flatMap((file) => top_level_rules(readFileSync(join(STYLES, file), "utf8")));
+const rules = ["theme.css", "code.css", "pages.css"].flatMap((file) =>
+  top_level_rules(readFileSync(join(STYLES, file), "utf8").replace(COMMENT, "")),
+);
 
 /** The declarations of the first rule written with exactly this selector, or an empty object. */
 export const style_of = (selector) => rules.find((rule) => rule.selector === selector)?.declarations ?? {};
@@ -78,7 +78,7 @@ function split_arguments(text) {
 /** A value with every `var(--name, fallback)` replaced by what it stands for. A host's own variable is never set here. */
 function without_variables(value, variables) {
   let text = value;
-  for (let pass = 0; pass < 8 && text.includes("var("); pass += 1) {
+  for (let pass = 0; pass < 64 && text.includes("var("); pass += 1) {
     const open = text.lastIndexOf("var(");
     const close = text.indexOf(")", open);
     const [name, ...fallback] = split_arguments(text.slice(open + 4, close));
@@ -87,23 +87,30 @@ function without_variables(value, variables) {
   return text;
 }
 
-/**
- * The page's tokens for `theme` ("light" or "dark") with their plain values: colours as hex, fonts as a stack.
- * The keys have no prefix: `background`, `foreground`, `muted`, `border`, `soft`, `module`, `added`, `removed`,
- * `mono`, `sans`, `radius`.
- */
-export function theme_tokens(theme = "light") {
-  const variables = { ...style_of(":root") };
+const is_variable = ([name]) => name.startsWith("--");
+
+/** The variables the theme file sets on the page for `theme`, as written: the dark ones over the light ones. */
+function root_variables(theme) {
+  const variables = Object.fromEntries(Object.entries(style_of(":root")).filter(is_variable));
   if (theme === "dark") {
-    Object.assign(variables, style_of(DARK_ROOT));
+    Object.assign(variables, Object.fromEntries(Object.entries(style_of(DARK_ROOT)).filter(is_variable)));
   }
-  return Object.fromEntries(
-    TOKEN_NAMES.map((name) => [name, without_variables(variables[`${TOKEN_PREFIX}${name}`] ?? "", variables)]),
-  );
+  return variables;
 }
 
-/** Whether the theme file has a dark variant. */
-export const has_dark_theme = () => Object.keys(style_of(DARK_ROOT)).length > 0;
+/**
+ * The page's tokens for `theme` ("light" or "dark") with no variable left in them, so `background` is a hex
+ * colour and `mono` a font stack. The keys have no prefix: `background`, `foreground`, `muted`, `ink`, `line`...
+ * A token built from others, such as `ink`, is still a `color-mix`: `plain_colour` turns it into hex.
+ */
+export function theme_tokens(theme = "light") {
+  const variables = root_variables(theme);
+  return Object.fromEntries(
+    Object.keys(variables)
+      .filter((name) => name.startsWith(TOKEN_PREFIX))
+      .map((name) => [name.slice(TOKEN_PREFIX.length), without_variables(variables[name], variables)]),
+  );
+}
 
 const hex_channels = (hex) => {
   let digits = hex.slice(1);
@@ -119,7 +126,8 @@ const hex_channels = (hex) => {
  * which is what shows through it. Anything else is the foreground.
  */
 export function plain_colour(value, tokens) {
-  const text = without_variables(value ?? "", Object.fromEntries(TOKEN_NAMES.map((name) => [`${TOKEN_PREFIX}${name}`, tokens[name]]))).trim();
+  const variables = Object.fromEntries(Object.entries(tokens).map(([name, token]) => [`${TOKEN_PREFIX}${name}`, token]));
+  const text = without_variables(value ?? "", variables).trim();
   if (text === "transparent") {
     return tokens.background;
   }
@@ -138,14 +146,12 @@ export function plain_colour(value, tokens) {
   return `#${mixed.map((channel) => channel.toString(16).padStart(2, "0")).join("")}`;
 }
 
-/** CSS that sets the tokens on `selector`, light first and dark where the reader's system asks for it. */
+/** CSS that sets the page's variables on `selector`, light first and dark where the reader's system asks for it. */
 export function token_css(selector) {
-  const block = (tokens) =>
-    `${selector} { ${TOKEN_NAMES.map((name) => `${TOKEN_PREFIX}${name}: ${tokens[name]};`).join(" ")} }`;
-  if (!has_dark_theme()) {
-    return block(theme_tokens("light"));
-  }
-  return `${block(theme_tokens("light"))}\n@media (prefers-color-scheme: dark) { ${block(theme_tokens("dark"))} }`;
+  const block = (variables) =>
+    `${selector} { ${Object.entries(variables).map(([name, value]) => `${name}: ${value};`).join(" ")} }`;
+  const dark = Object.fromEntries(Object.entries(style_of(DARK_ROOT)).filter(is_variable));
+  return `${block(root_variables("light"))}\n@media (prefers-color-scheme: dark) { ${block(dark)} }`;
 }
 
 /** The rules of the style sheets whose selectors all match `pattern`, as CSS, each selector put under `scope`. */
@@ -181,7 +187,9 @@ export function font_of(selector, base = BODY_FONT) {
   const declarations = style_of(selector);
   const font = { ...base };
   let line = declarations["line-height"];
-  const [, weight, size, short_line, family] = FONT.exec(declarations.font ?? "") ?? [];
+  // A rule may take its whole font from one token, such as the label's.
+  const shorthand = (declarations.font ?? "").replace(/^var\((--cp_\w+)\)$/, (whole, name) => style_of(":root")[name] ?? whole);
+  const [, weight, size, short_line, family] = FONT.exec(shorthand) ?? [];
   if (size !== undefined) {
     Object.assign(font, { family, size: Number(size), weight, ratio: BODY_FONT.ratio });
     line = short_line ?? line;

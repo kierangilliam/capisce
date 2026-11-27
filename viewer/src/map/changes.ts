@@ -1,3 +1,4 @@
+import { STATUS_WORDS } from "../../../src/pseudo.mjs";
 import type { Domain, MapSymbol, StepOp } from "../types";
 import { catalog, domain_of_page, domain_page, KIND_LABELS } from "./catalog";
 
@@ -5,7 +6,6 @@ export type Chip = { part: string; label: string; tone: "added" | "removed" | "w
 export type ChangedThing = { id: string; status_line: string; chips: Chip[] };
 export type ChangeGroup = { name: string; things: ChangedThing[] };
 
-const STATUS_WORDS = { added: "New", removed: "Removed", changed: "Changed" };
 const STEP_WORDS: Record<StepOp, string> = { "+": "Stage added", "~": "Stage changed", "-": "Stage removed", " ": "" };
 const STEP_TONES: Record<StepOp, Chip["tone"]> = { "+": "added", "-": "removed", "~": "", " ": "" };
 const UNGROUPED = "Shared";

@@ -73,7 +73,7 @@
   {/each}
   <line class="lane_head_rule" x1="0" y1={drawing.head_height} x2={drawing.width} y2={drawing.head_height} />
   {#each drawing.bars as bar}
-    <rect class="trace_bar" x={bar.x} y={bar.y} width={TRACE.bar_width} height={bar.height} />
+    <rect class="trace_bar" x={bar.x} y={bar.y} width={TRACE.bar_width} height={bar.height} rx={TRACE.bar_width / 2} />
   {/each}
   {#each drawing.rows as drawn (drawn.index)}
     {#if drawn.row.kind === "return"}
@@ -98,9 +98,14 @@
       >
         <rect class="trace_hit" x="0" y={drawn.top} width={drawing.width} height={drawn.height} />
         <rect class="trace_mark" x="0" y={drawn.top} width="2" height={drawn.height} />
-        {#if drawn.arrow_head !== undefined}
+        {#if drawn.branch}
+          <path class="trace_branch" d={drawn.arrow_path} />
+        {:else if drawn.arrow_head !== undefined}
           <path class="trace_arrow" d={drawn.arrow_path} />
           <polygon class="trace_head" points={head_points(drawn.arrow_head)} />
+        {/if}
+        {#if drawn.stop !== undefined}
+          <circle class="trace_stop" cx={drawn.stop.x} cy={drawn.stop.y} r="3.5" />
         {/if}
         {#if drawn.note !== undefined}
           <rect class="trace_note" x={drawn.note.x} y={drawn.note.y} width={drawn.note.width} height={drawn.note.height} rx="3" />

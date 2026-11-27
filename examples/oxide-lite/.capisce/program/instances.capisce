@@ -21,8 +21,11 @@ route POST /v1/instances(
     #> Find who is calling -> session_auth.authenticate | 401
     caller = session_auth.authenticate(request)
     #> Create the instance -> instances.create_instance | 400 | 403 | 404 | 409 | 503
-    instance = instances.create_instance(caller, project,
-        {name, ncpus, memory_gib, boot_disk_size_gib})
+    instance = instances.create_instance(
+        caller,
+        project,
+        {name, ncpus, memory_gib, boot_disk_size_gib},
+    )
     return 201, instance
 
 === GET /v1/instances/{instance}
@@ -97,7 +100,10 @@ def create_instance(caller, project_name, new):
     with store_lock:
         #> Find the project; collaborators and admins -> project_roles.authorize_project | ProjectNotFound | Forbidden
         project, _ = project_roles.authorize_project(
-            caller, project_name, "collaborator")
+            caller,
+            project_name,
+            "collaborator",
+        )
         #> Check the name and the sizes -> names.validate_name | InvalidRequest
         names.validate_name(new.name)
         if not (1 <= new.ncpus <= 8
@@ -111,19 +117,32 @@ def create_instance(caller, project_name, new):
         if disk_store.disk_by_name(project, boot_disk_name):
             raise ApiError.DiskNameTaken           # 409
         #> Check the project's quota -> quotas.check_quota | QuotaExceeded
-        quotas.check_quota(project, new.ncpus,
-            new.memory_gib, new.boot_disk_size_gib)
+        quotas.check_quota(
+            project,
+            new.ncpus,
+            new.memory_gib,
+            new.boot_disk_size_gib,
+        )
         #> Take an address from the pool -> rack_store.address_allocate | AddressPoolExhausted
         address = rack_store.address_allocate(instance_id)
         if address is None:
             raise ApiError.AddressPoolExhausted    # 503
         #> Create the boot disk, attached -> disk_store.disk_insert
         boot_disk = disk_store.disk_insert(
-            project, boot_disk_name,
-            new.boot_disk_size_gib, instance_id)
+            project,
+            boot_disk_name,
+            new.boot_disk_size_gib,
+            instance_id,
+        )
         #> Record the instance as creating -> instance_store.instance_insert
-        instance = Instance(new, project, boot_disk, address,
-            state: "creating", state_changed_at: now)
+        instance = Instance(
+            new,
+            project,
+            boot_disk,
+            address,
+            state: "creating",
+            state_changed_at: now,
+        )
         instance_store.instance_insert(instance)
         return instance
 
@@ -144,7 +163,10 @@ def settle_instance(instance, now):
     #> A stopping instance becomes stopped -> instance_store.instance_set_state
     if instance.state == "stopping":
         return instance_store.instance_set_state(
-            instance, "stopped", now)
+            instance,
+            "stopped",
+            now,
+        )
     return instance
 
 === instances.lookup_instance
@@ -160,7 +182,10 @@ def lookup_instance(caller, instance_id, needed):
     #> Check the caller's role on its project -> project_roles.require_role | InstanceNotFound | Forbidden
     # no role at all reads as InstanceNotFound
     project_roles.require_role(
-        caller, instance.project_id, needed)
+        caller,
+        instance.project_id,
+        needed,
+    )
     #> Bring its state up to date -> settle_instance
     return settle_instance(instance, now)
 
@@ -173,10 +198,12 @@ def list_instances(caller, project_name):
     with store_lock:
         #> Find the project; any role may look -> project_roles.authorize_project | ProjectNotFound
         project, _ = project_roles.authorize_project(
-            caller, project_name, "viewer")
+            caller,
+            project_name,
+            "viewer",
+        )
         #> Load its instances -> instance_store.instances_in_project
-        found = instance_store.instances_in_project(
-            project.id)
+        found = instance_store.instances_in_project(project.id)
         #> Bring each one's state up to date -> settle_instance
         return [settle_instance(each, now) for each in found]
 
@@ -199,7 +226,10 @@ def start_instance(caller, instance_id):
     with store_lock:
         #> Find it; collaborators and admins -> lookup_instance | InstanceNotFound | Forbidden
         instance = lookup_instance(
-            caller, instance_id, "collaborator")
+            caller,
+            instance_id,
+            "collaborator",
+        )
         #> Leave a running or starting instance alone
         if instance.state in ["running", "starting"]:
             return instance
@@ -207,7 +237,10 @@ def start_instance(caller, instance_id):
         if instance.state in ["stopped", "failed"]:
             # an earlier failure reason is cleared
             return instance_store.instance_set_state(
-                instance, "starting", now)
+                instance,
+                "starting",
+                now,
+            )
         #> Refuse while it is creating or stopping | InstanceBusy
         raise ApiError.InstanceBusy                # 409
 
@@ -220,7 +253,10 @@ def stop_instance(caller, instance_id):
     with store_lock:
         #> Find it; collaborators and admins -> lookup_instance | InstanceNotFound | Forbidden
         instance = lookup_instance(
-            caller, instance_id, "collaborator")
+            caller,
+            instance_id,
+            "collaborator",
+        )
         #> Leave a stopped or stopping instance alone
         if instance.state in ["stopped", "stopping"]:
             return instance
@@ -228,7 +264,10 @@ def stop_instance(caller, instance_id):
         if instance.state == "running":
             # it keeps its place on the rack until stopped
             return instance_store.instance_set_state(
-                instance, "stopping", now)
+                instance,
+                "stopping",
+                now,
+            )
         #> Refuse while creating, starting or failed | InstanceNotRunning
         raise ApiError.InstanceNotRunning          # 409
 
@@ -241,7 +280,10 @@ def delete_instance(caller, instance_id):
     with store_lock:
         #> Find it; collaborators and admins -> lookup_instance | InstanceNotFound | Forbidden
         instance = lookup_instance(
-            caller, instance_id, "collaborator")
+            caller,
+            instance_id,
+            "collaborator",
+        )
         #> Refuse unless it is stopped or failed | InstanceNotStopped
         if instance.state not in ["stopped", "failed"]:
             raise ApiError.InstanceNotStopped      # 409

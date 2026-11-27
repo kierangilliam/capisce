@@ -45,7 +45,10 @@ def list_disks(caller, project_name):
     with store_lock:
         #> Find the project; any role may look -> project_roles.authorize_project | ProjectNotFound
         project, _ = project_roles.authorize_project(
-            caller, project_name, "viewer")
+            caller,
+            project_name,
+            "viewer",
+        )
         return disk_store.disks_in_project(project.id)
 
 === disks.create_disk
@@ -58,7 +61,10 @@ def create_disk(caller, project_name, name, size_gib):
     with store_lock:
         #> Find the project; collaborators and admins -> project_roles.authorize_project | ProjectNotFound | Forbidden
         project, _ = project_roles.authorize_project(
-            caller, project_name, "collaborator")
+            caller,
+            project_name,
+            "collaborator",
+        )
         #> Check the name and the size -> names.validate_name | InvalidRequest
         names.validate_name(name)
         if not 1 <= size_gib <= 1000:
@@ -70,7 +76,11 @@ def create_disk(caller, project_name, name, size_gib):
         quotas.check_quota(project, 0, 0, size_gib)
         #> Save the disk, attached to nothing -> disk_store.disk_insert
         return disk_store.disk_insert(
-            project.id, name, size_gib, None)
+            project.id,
+            name,
+            size_gib,
+            None,
+        )
 
 === disks.attach_disk
 kind: def
@@ -82,7 +92,10 @@ def attach_disk(caller, instance_id, disk_id):
     with store_lock:
         #> Find the instance; collaborators and admins -> instances.lookup_instance | InstanceNotFound | Forbidden
         instance = instances.lookup_instance(
-            caller, instance_id, "collaborator")
+            caller,
+            instance_id,
+            "collaborator",
+        )
         #> Find the disk in the same project -> disk_store.disk_by_id | DiskNotFound
         disk = disk_store.disk_by_id(disk_id)
         if (disk is None
@@ -106,7 +119,9 @@ def attach_disk(caller, instance_id, disk_id):
             raise ApiError.TooManyDisks            # 409
         #> Attach it -> disk_store.disk_set_attachment
         return disk_store.disk_set_attachment(
-            disk.id, instance.id)
+            disk.id,
+            instance.id,
+        )
 
 === disks.delete_disk
 kind: def
@@ -123,7 +138,10 @@ def delete_disk(caller, disk_id):
         # collaborators and admins
         # no role at all reads as DiskNotFound
         project_roles.require_role(
-            caller, disk.project_id, "collaborator")
+            caller,
+            disk.project_id,
+            "collaborator",
+        )
         #> Refuse an attached disk | DiskAttached
         if disk.attached_instance_id is not None:
             raise ApiError.DiskAttached            # 409
@@ -137,9 +155,13 @@ doc: Saves a new disk. A disk created for an instance is its boot disk and start
 ---
 def disk_insert(
         project_id, name, size_gib, boot_for_instance_id):
-    disk = Disk(project_id, name, size_gib,
+    disk = Disk(
+        project_id,
+        name,
+        size_gib,
         attached_instance_id: boot_for_instance_id,
-        is_boot_disk: boot_for_instance_id is not None)
+        is_boot_disk: boot_for_instance_id is not None,
+    )
     save disk
     return disk
 

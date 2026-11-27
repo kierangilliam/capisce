@@ -108,7 +108,10 @@ def retime(ticket):
     #> Same start, new length -> deadlines.DueAt
     plan = the plan of ticket's Customer
     ticket.DueAt = deadlines.DueAt(
-        ticket.WaitingSince, ticket.Priority, plan)
+        ticket.WaitingSince,
+        ticket.Priority,
+        plan,
+    )
     #> A later deadline can clear overdue
     if now < ticket.DueAt:
         ticket.Overdue = False

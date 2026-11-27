@@ -63,8 +63,13 @@ doc: Tells the people responsible for a ticket: its assignee, or the team's acti
 def tellOwners(ticket, kind, text, by):
     #> The assignee, when there is one -> tickets.Service.tellAgent
     if ticket.AssignedAgentID:
-        tellAgent(ticket.AssignedAgentID,
-                  ticket, kind, text, by)
+        tellAgent(
+            ticket.AssignedAgentID,
+            ticket,
+            kind,
+            text,
+            by,
+        )
         return
     #> Otherwise the team's active leads -> tickets.Service.tellLeads
     tellLeads(ticket, kind, text, by)
@@ -108,12 +113,20 @@ doc: Who hears about a new ticket: the team's leads, and the customer when an ag
 ---
 def announceOpened(ticket, by):
     #> Tell the team's leads -> tickets.Service.tellLeads
-    tellLeads(ticket, "ticket_opened",
-              "New ticket <id>: <subject>", by)
+    tellLeads(
+        ticket,
+        "ticket_opened",
+        "New ticket <id>: <subject>",
+        by,
+    )
     #> Tell the customer when an agent opened it -> notify.Outbox.Send
     if by.IsAgent():
-        notify.Outbox.Send(to customer, "ticket_opened",
-                    ticket.ID, "We opened <id> for you")
+        notify.Outbox.Send(
+            to customer,
+            "ticket_opened",
+            ticket.ID,
+            "We opened <id> for you",
+        )
 
 === tickets.Service.announceReply
 kind: def
@@ -135,11 +148,21 @@ doc: Who hears that a ticket changed hands: the agent who got it and the agent w
 ---
 def announceAssigned(ticket, previousAgentID, by):
     #> Tell the new assignee -> tickets.Service.tellAgent
-    tellAgent(ticket.AssignedAgentID, ticket,
-              "ticket_assigned", "Ticket is now yours", by)
+    tellAgent(
+        ticket.AssignedAgentID,
+        ticket,
+        "ticket_assigned",
+        "Ticket is now yours",
+        by,
+    )
     #> Tell the agent who had it -> tickets.Service.tellAgent
-    tellAgent(previousAgentID, ticket,
-              "ticket_released", "Went to someone else", by)
+    tellAgent(
+        previousAgentID,
+        ticket,
+        "ticket_released",
+        "Went to someone else",
+        by,
+    )
 
 === tickets.Service.announceEscalated
 kind: def
@@ -148,11 +171,20 @@ doc: Who hears that a lead escalated a ticket: its assignee and the customer.
 ---
 def announceEscalated(ticket, by):
     #> Tell the assignee -> tickets.Service.tellAgent
-    tellAgent(ticket.AssignedAgentID, ticket,
-              "ticket_escalated", "Ticket was escalated", by)
+    tellAgent(
+        ticket.AssignedAgentID,
+        ticket,
+        "ticket_escalated",
+        "Ticket was escalated",
+        by,
+    )
     #> Tell the customer -> notify.Outbox.Send
-    notify.Outbox.Send(to customer, "ticket_escalated",
-                ticket.ID, "Getting extra attention")
+    notify.Outbox.Send(
+        to customer,
+        "ticket_escalated",
+        ticket.ID,
+        "Getting extra attention",
+    )
 
 === tickets.Service.announceOverdue
 kind: def
@@ -164,5 +196,9 @@ def announceOverdue(ticket):
     #> Tell the team's leads -> tickets.Service.tellLeads
     tellLeads(ticket, "ticket_overdue", text)
     #> Tell the assignee -> tickets.Service.tellAgent
-    tellAgent(ticket.AssignedAgentID, ticket,
-              "ticket_overdue", text)
+    tellAgent(
+        ticket.AssignedAgentID,
+        ticket,
+        "ticket_overdue",
+        text,
+    )

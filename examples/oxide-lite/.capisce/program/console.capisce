@@ -222,8 +222,7 @@ def give_role(user_name, role):
         return False
     #> Ask the API to save the role -> api_client.project_member_set | False, with why
     try:
-        api_client.project_member_set(
-            project, user_name, role)
+        api_client.project_member_set(project, user_name, role)
     except ApiError:
         handle_refusal(error)
         return False
@@ -277,7 +276,9 @@ def submit_create_instance(form):
     show_message("Creating <name>…")
     #> Wait until it is running or failed -> wait_for_instance
     settled = wait_for_instance(
-        instance.id, ["running", "failed"])
+        instance.id,
+        ["running", "failed"],
+    )
     #> Reload the project, for its new usage -> project_actions.switch_project
     project_actions.switch_project(project)
     #> Tell the person how it ended
@@ -364,7 +365,9 @@ def start_instance(instance):
     show_message("Starting <name>…")
     #> Wait until it is running or failed -> wait_for_instance
     settled = wait_for_instance(
-        instance.id, ["running", "failed"])
+        instance.id,
+        ["running", "failed"],
+    )
     #> Tell the person how it ended
     if settled is None:
         return None
@@ -439,7 +442,9 @@ def attach_disk(instance, disk):
     #> Ask the API to attach it -> api_client.instance_disk_attach | False, with why
     try:
         attached = api_client.instance_disk_attach(
-            instance.id, disk.id)
+            instance.id,
+            disk.id,
+        )
     except ApiError:
         session_actions.handle_refusal(error)
         return False
@@ -500,7 +505,10 @@ doc: Asks the API to sign a person in.
 def login(user_name, password):
     #> Send the request -> POST /v1/login
     return api_request(
-        "POST", "/v1/login", {user_name, password})
+        "POST",
+        "/v1/login",
+        {user_name, password},
+    )
 
 === api_client.logout
 kind: def
@@ -528,7 +536,10 @@ doc: Asks the API to create a project.
 def project_create(name, description):
     #> Send the request -> POST /v1/projects
     return api_request(
-        "POST", "/v1/projects", {name, description})
+        "POST",
+        "/v1/projects",
+        {name, description},
+    )
 
 === api_client.project_view
 kind: def
@@ -546,8 +557,7 @@ doc: Asks the API to delete a project.
 ---
 def project_delete(project_name):
     #> Send the request -> DELETE /v1/projects/{project}
-    return api_request(
-        "DELETE", "/v1/projects/<project_name>")
+    return api_request("DELETE", "/v1/projects/<project_name>")
 
 === api_client.project_member_set
 kind: def
@@ -557,8 +567,10 @@ doc: Asks the API to give a person a role on a project.
 def project_member_set(project_name, user_name, role):
     #> Send the request -> PUT /v1/projects/{project}/members
     return api_request(
-        "PUT", "/v1/projects/<project_name>/members",
-        {user_name, role})
+        "PUT",
+        "/v1/projects/<project_name>/members",
+        {user_name, role},
+    )
 
 === api_client.instance_list
 kind: def
@@ -568,7 +580,9 @@ doc: Asks the API for the instances of a project.
 def instance_list(project_name):
     #> Send the request -> GET /v1/instances
     return api_request(
-        "GET", "/v1/instances?project=<project_name>")
+        "GET",
+        "/v1/instances?project=<project_name>",
+    )
 
 === api_client.instance_create
 kind: def
@@ -578,8 +592,10 @@ doc: Asks the API to create an instance in a project.
 def instance_create(project_name, params):
     #> Send the request -> POST /v1/instances
     return api_request(
-        "POST", "/v1/instances?project=<project_name>",
-        params)
+        "POST",
+        "/v1/instances?project=<project_name>",
+        params,
+    )
 
 === api_client.instance_view
 kind: def
@@ -598,7 +614,9 @@ doc: Asks the API to start an instance.
 def instance_start(instance_id):
     #> Send the request -> POST /v1/instances/{instance}/start
     return api_request(
-        "POST", "/v1/instances/<instance_id>/start")
+        "POST",
+        "/v1/instances/<instance_id>/start",
+    )
 
 === api_client.instance_stop
 kind: def
@@ -608,7 +626,9 @@ doc: Asks the API to stop an instance.
 def instance_stop(instance_id):
     #> Send the request -> POST /v1/instances/{instance}/stop
     return api_request(
-        "POST", "/v1/instances/<instance_id>/stop")
+        "POST",
+        "/v1/instances/<instance_id>/stop",
+    )
 
 === api_client.instance_delete
 kind: def
@@ -617,8 +637,7 @@ doc: Asks the API to delete an instance.
 ---
 def instance_delete(instance_id):
     #> Send the request -> DELETE /v1/instances/{instance}
-    return api_request(
-        "DELETE", "/v1/instances/<instance_id>")
+    return api_request("DELETE", "/v1/instances/<instance_id>")
 
 === api_client.instance_disk_attach
 kind: def
@@ -628,8 +647,10 @@ doc: Asks the API to attach a disk to an instance.
 def instance_disk_attach(instance_id, disk_id):
     #> Send the request -> POST /v1/instances/{instance}/disks/attach
     return api_request(
-        "POST", "/v1/instances/<instance_id>/disks/attach",
-        {disk: disk_id})
+        "POST",
+        "/v1/instances/<instance_id>/disks/attach",
+        {disk: disk_id},
+    )
 
 === api_client.disk_list
 kind: def
@@ -639,7 +660,9 @@ doc: Asks the API for the disks of a project.
 def disk_list(project_name):
     #> Send the request -> GET /v1/disks
     return api_request(
-        "GET", "/v1/disks?project=<project_name>")
+        "GET",
+        "/v1/disks?project=<project_name>",
+    )
 
 === api_client.disk_create
 kind: def
@@ -649,8 +672,10 @@ doc: Asks the API to create a disk in a project.
 def disk_create(project_name, name, size_gib):
     #> Send the request -> POST /v1/disks
     return api_request(
-        "POST", "/v1/disks?project=<project_name>",
-        {name, size_gib})
+        "POST",
+        "/v1/disks?project=<project_name>",
+        {name, size_gib},
+    )
 
 === api_client.disk_delete
 kind: def

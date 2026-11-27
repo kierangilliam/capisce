@@ -48,24 +48,26 @@ const NARROW_CANVAS_WIDTH = 508;
 /** Where the cursor clicks a row of the trace. In the narrow frame the row's words are scrolled into sight first. */
 async function row_click_point(stage: Stage, index: number): Promise<{ hit: HTMLElement; at: Point }> {
   const hit = await stage.find(trace_row(index));
+  // The row's label sits in a box above its arrow and any exits, so the cursor aims at the box, not the row's middle.
+  const box = await stage.find(`.trace_row[data-trace="${index}"] .trace_note`);
   if (!stage.narrow) {
-    return { hit, at: { x: WIDE_ROW_X, y: stage.center_of(hit).y } };
+    return { hit, at: { x: WIDE_ROW_X, y: stage.center_of(box).y } };
   }
   const words = await stage.find(`.trace_row[data-trace="${index}"] .trace_label`);
   const panel = await stage.find('[data-panel="flow"]');
   const frame = panel.getBoundingClientRect();
-  const box = words.getBoundingClientRect();
+  const words_box = words.getBoundingClientRect();
   let behavior: ScrollBehavior = "smooth";
   if (stage.instant) {
     behavior = "instant";
   }
   panel.scrollTo({
-    top: Math.max(0, panel.scrollTop + box.top - frame.top - NARROW_ROW_ROOM.above),
-    left: Math.max(0, panel.scrollLeft + box.left - frame.left - NARROW_ROW_ROOM.beside),
+    top: Math.max(0, panel.scrollTop + words_box.top - frame.top - NARROW_ROW_ROOM.above),
+    left: Math.max(0, panel.scrollLeft + words_box.left - frame.left - NARROW_ROW_ROOM.beside),
     behavior,
   });
   await stage.wait(500);
-  return { hit, at: { x: words.getBoundingClientRect().left + 24, y: stage.center_of(hit).y } };
+  return { hit, at: { x: words.getBoundingClientRect().left + 24, y: stage.center_of(box).y } };
 }
 
 /** In the narrow frame the code is below the trace, so the step just picked is scrolled into sight. */
@@ -205,7 +207,10 @@ export const SCENARIOS: Record<string, Scenario> = {
       if (stage.narrow) {
         stage.bring_into_panel(title_element);
       }
-      const title = title_element.getBoundingClientRect();
+      // The pin goes just past the end of the title's first line: the title can wrap, and its box runs to the next column.
+      const words = stage.doc.createRange();
+      words.selectNodeContents(title_element);
+      const title = words.getClientRects()[0] ?? title_element.getBoundingClientRect();
       await stage.click_at(await stage.find('[data-layer="code"]'), { x: title.right + 14, y: title.top + title.height / 2 });
       await stage.wait(400);
       await stage.type(await stage.find<HTMLTextAreaElement>("[data-draft-input]"), NOTE_ON_PIN);

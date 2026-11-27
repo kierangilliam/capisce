@@ -18,7 +18,13 @@
 .lane_head rect { fill: var(--cp_raised); }
 .lane_head text { font: 600 10.5px var(--cp_mono); fill: var(--cp_foreground); text-anchor: middle; }
 .lane_head_rule { stroke: var(--cp_foreground); stroke-width: 1.5; }
-.trace_bar { fill: var(--cp_background); stroke: var(--cp_foreground); stroke-width: 1.25; }
+/* A function's rail: a thin line down its lane while it runs. A nested call branches off it with a curve, and each
+   step that leaves the rail is a stop on it, as on a transit map. */
+.trace_bar { fill: var(--cp_ink); }
+.trace_branch { fill: none; stroke: var(--cp_ink); stroke-width: 3; stroke-linecap: round; }
+.trace_stop { fill: var(--cp_background); stroke: var(--cp_ink); stroke-width: 1.5; }
+.trace_row.selected .trace_branch { stroke: var(--cp_accent); }
+.trace_row.selected .trace_stop { stroke: var(--cp_accent); stroke-width: 2; }
 /* A row shows it is picked with the accent, so it never draws the page's focus outline around the whole row. */
 .capisce .trace_row { cursor: pointer; outline: none; }
 .trace_hit { fill: var(--cp_foreground); fill-opacity: 0; }

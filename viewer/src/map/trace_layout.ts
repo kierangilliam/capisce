@@ -16,6 +16,10 @@ export type DrawnRow = {
   label_box: { x: number; y: number; width: number; height: number } | undefined;
   text: { x: number; y: number; lines: string[] };
   exits: DrawnExit[];
+  /** Where the step leaves its function's rail, drawn as a stop on it. Steps done in place have none. */
+  stop: { x: number; y: number } | undefined;
+  /** A call into the same module draws its arrow as a branch curving off the rail, not as an arrow. */
+  branch: boolean;
 };
 export type DrawnLane = { x: number; lines: string[]; first_line_y: number };
 export type DrawnBar = { x: number; y: number; height: number };
@@ -35,7 +39,10 @@ export const TRACE = {
   left: 8,
   line_height: 16,
   label_width: 178,
-  bar_width: 8,
+  /** The width of a function's rail, the line that runs down its lane while it is running. */
+  bar_width: 3,
+  /** How far a nested call's rail sits from the rail it branches off. */
+  branch_offset: 12,
   exit_height: 16,
 };
 
@@ -52,7 +59,8 @@ const lane_head_lines = (lane: string, mono: TraceFonts["mono"]): string[] =>
 export function trace_drawing(trace: Trace, fonts: TraceFonts): TraceDrawing {
   const { rows, instances, lanes } = trace;
   const lane_x = (lane: string) => TRACE.left + TRACE.head_width / 2 + lanes.indexOf(lane) * TRACE.lane_gap;
-  const bar_left = (lane: string, level: number) => lane_x(lane) - TRACE.bar_width / 2 + level * 5;
+  const bar_left = (lane: string, level: number) => lane_x(lane) - TRACE.bar_width / 2 + level * TRACE.branch_offset;
+  const rail_x = (lane: string, level: number) => bar_left(lane, level) + TRACE.bar_width / 2;
   const widest = (lines: string[]) => Math.max(...lines.map(fonts.label));
   const head_lines = lanes.map((lane) => lane_head_lines(lane || UNNAMED_LANE, fonts.mono));
   const head_height = Math.max(...head_lines.map((lines) => lines.length)) * TRACE.head_line_height + 22;
@@ -82,6 +90,8 @@ export function trace_drawing(trace: Trace, fonts: TraceFonts): TraceDrawing {
         label_box: undefined,
         text: { x: 0, y: 0, lines: [] },
         exits: [],
+        stop: undefined,
+        branch: false,
       });
       return;
     }
@@ -92,6 +102,7 @@ export function trace_drawing(trace: Trace, fonts: TraceFonts): TraceDrawing {
     let arrow_head: ArrowHead | undefined;
     let note: DrawnRow["note"];
     let label_box: DrawnRow["label_box"];
+    let branch = false;
     let text: DrawnRow["text"];
     const opened = instances[row.opens ?? -1];
     if (row.kind === "call" && row.to !== row.from) {
@@ -113,15 +124,21 @@ export function trace_drawing(trace: Trace, fonts: TraceFonts): TraceDrawing {
       width = Math.max(width, label_box.x + label_box.width + 12);
     } else if (row.kind === "call") {
       const lines = wrap_words(row.title, TRACE.label_width, fonts.label);
-      let back = from_right + 2;
       if (opened !== undefined) {
-        back = bar_left(row.from, opened.level) + TRACE.bar_width + 1;
+        // The nested call curves off the rail onto its own, like a line branching on a transit map.
+        const from_x = rail_x(row.from, row.level);
+        const to_x = rail_x(row.from, opened.level);
+        arrow_path = `M${from_x} ${arrow_y} C${from_x} ${arrow_y + 9} ${to_x} ${arrow_y + 5} ${to_x} ${arrow_y + 14}`;
+        branch = true;
+      } else {
+        const back = from_right + 2;
+        arrow_path = `M${from_right} ${arrow_y} H${from_right + 22} V${arrow_y + 14} H${back + 6}`;
+        arrow_head = { x: back, y: arrow_y + 14, direction: -1 };
       }
-      arrow_path = `M${from_right} ${arrow_y} H${from_right + 22} V${arrow_y + 14} H${back + 6}`;
-      arrow_head = { x: back, y: arrow_y + 14, direction: -1 };
       const box_height = lines.length * TRACE.line_height + 10;
-      label_box = { x: from_right + 30, y: top + 2, width: widest(lines) + 18, height: box_height };
-      text = { x: from_right + 39, y: top + 18, lines };
+      const box_x = bar_left(row.from, row.level + 1) + TRACE.bar_width + 14;
+      label_box = { x: box_x, y: top + 2, width: widest(lines) + 18, height: box_height };
+      text = { x: box_x + 9, y: top + 18, lines };
       bottom = Math.max(arrow_y + 20, top + 2 + box_height);
       width = Math.max(width, label_box.x + label_box.width + 12);
     } else {
@@ -149,7 +166,8 @@ export function trace_drawing(trace: Trace, fonts: TraceFonts): TraceDrawing {
     }
     y = bottom + 8;
     placed.push({ top, bottom: y, arrow_y });
-    drawn.push({ index, row, top, height: y - top, arrow_path, arrow_head, note, label_box, text, exits });
+    const stop = row.kind === "call" ? { x: rail_x(row.from, row.level), y: arrow_y } : undefined;
+    drawn.push({ index, row, top, height: y - top, arrow_path, arrow_head, note, label_box, text, exits, stop, branch });
   });
 
   const height = y + 10;

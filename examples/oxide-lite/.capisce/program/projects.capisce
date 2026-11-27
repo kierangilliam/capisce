@@ -20,8 +20,7 @@ route POST /v1/projects(name, description=""):
     #> Find who is calling -> session_auth.authenticate | 401
     caller = session_auth.authenticate(request)
     #> Create the project -> projects.create_project | 400 InvalidRequest | 409 ProjectNameTaken
-    project = projects.create_project(
-        caller, name, description)
+    project = projects.create_project(caller, name, description)
     return 201, project
 
 === GET /v1/projects/{project}
@@ -89,7 +88,9 @@ def create_project(caller, name, description):
             raise ApiError.ProjectNameTaken        # 409
         #> Save it with the default quota -> project_store.project_insert
         project = project_store.project_insert(
-            name, description)
+            name,
+            description,
+        )
         #> Make the creator its admin -> user_store.role_set
         user_store.role_set(project.id, caller.id, "admin")
         return project
@@ -103,7 +104,10 @@ def view_project(caller, project_name):
     with store_lock:
         #> Find the project; any role may look -> project_roles.authorize_project | ProjectNotFound
         project, role = project_roles.authorize_project(
-            caller, project_name, "viewer")
+            caller,
+            project_name,
+            "viewer",
+        )
         #> Add up what it holds -> project_store.project_usage
         usage = project_store.project_usage(project.id)
         return project, usage, role
@@ -117,7 +121,10 @@ def delete_project(caller, project_name):
     with store_lock:
         #> Find the project; admins only -> project_roles.authorize_project | ProjectNotFound | Forbidden
         project, _ = project_roles.authorize_project(
-            caller, project_name, "admin")
+            caller,
+            project_name,
+            "admin",
+        )
         #> Refuse while it holds anything -> project_store.project_usage | ProjectNotEmpty
         usage = project_store.project_usage(project.id)
         if usage.instances > 0 or usage.disks > 0:
@@ -134,7 +141,10 @@ def set_member_role(caller, project_name, user_name, role):
     with store_lock:
         #> Find the project; admins only -> project_roles.authorize_project | ProjectNotFound | Forbidden
         project, _ = project_roles.authorize_project(
-            caller, project_name, "admin")
+            caller,
+            project_name,
+            "admin",
+        )
         #> Find the person by name -> user_store.user_by_name | UserNotFound
         member = user_store.user_by_name(user_name)
         if member is None:
@@ -157,9 +167,10 @@ def check_quota(project, cpus, memory_gib, disk_gib):
     #> Compare what is asked with what is left | QuotaExceeded
     # checked in this order; the first that fails is named
     for asked, left in [
-            (cpus, project.quota_cpus - usage.cpus),
-            (memory_gib, quota_memory_gib - usage.memory_gib),
-            (disk_gib, quota_disk_gib - usage.disk_gib)]:
+        (cpus, project.quota_cpus - usage.cpus),
+        (memory_gib, quota_memory_gib - usage.memory_gib),
+        (disk_gib, quota_disk_gib - usage.disk_gib),
+    ]:
         if asked > left:
             raise ApiError.QuotaExceeded           # 403
 
@@ -183,9 +194,13 @@ also: api/src/db/project_store.rs :: const DEFAULT_QUOTA_CPUS ; api/src/db/proje
 doc: Saves a new project. Every project starts with the same quota.
 ---
 def project_insert(name, description):
-    project = Project(name, description,
-        quota_cpus: 16, quota_memory_gib: 64,
-        quota_disk_gib: 500)
+    project = Project(
+        name,
+        description,
+        quota_cpus: 16,
+        quota_memory_gib: 64,
+        quota_disk_gib: 500,
+    )
     save project
     return project
 

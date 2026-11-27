@@ -153,7 +153,10 @@ doc: Starts a session for a person with a new random token.
 ---
 def session_insert(user_id, expires_at):
     session = Session(
-        token: a random token, user_id, expires_at)
+        token: a random token,
+        user_id,
+        expires_at,
+    )
     save session
     return session
 

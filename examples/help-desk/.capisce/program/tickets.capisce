@@ -92,8 +92,7 @@ route PUT /tickets/{id}/priority(id, priority):
     #> Read the body -> web.readJSON | 400 BadBody
     priority = readJSON(request)
     #> Change it -> tickets.Service.ChangePriority | 404 TicketNotFound | 403 NotAllowed | 409 TicketClosed | 400 UnknownPriority
-    ticket = tickets.Service.ChangePriority(
-        actor, id, priority)
+    ticket = tickets.Service.ChangePriority(actor, id, priority)
     return 200, ticket
 
 === POST /tickets/{id}/escalate

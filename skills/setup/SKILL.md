@@ -100,7 +100,7 @@ Create `shared.capisce` in the program folder (`.capisce/program/`) first, for n
 
 Domains do not depend on each other's program files, so several agents can write them at once, one file each. Have each build with `--only <its domain>` so unfinished files do not break the others. Tell each which files are its own and that ids must be unique across files.
 
-Write a list of fields that does not fit on one line as `update Order:` with one field to a line under it, indented once, each with a comma after it. Do not carry the list on under its first field.
+Write a list of fields that does not fit on one line as `update Order:` with one field to a line under it, indented once, each with a comma after it. Do not carry the list on under its first field. A call that does not fit on one line ends with its opening bracket, takes one argument to a line, indented once more, each with a comma after it, and closes its bracket on a line of its own.
 
 Write only what the code does. Each author should reread a few of their blocks against the code before finishing, and report anything the code does that looks wrong: mapping a codebase turns up bugs.
 

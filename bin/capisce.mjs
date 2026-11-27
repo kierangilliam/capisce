@@ -7,13 +7,20 @@
 // capisce comments [--all]                                                         print the comments waiting on a reply
 // capisce reply <comment id> <text> [--done]                                       answer a comment in its thread
 // capisce timings                                                                  fetch how long each endpoint takes, from the project's source
-// capisce skill <name>                                                             print a skill: setup, update or address-comments
+// capisce changes [--base <git ref>] [--json]                                      list the symbols whose map changed since a commit
+// capisce show <symbol id>... [--base <git ref>] [--format html|svg|diff] [--out <file or folder>]
+//                                                                                  write one symbol's pseudo-code, or its diff, as a small file
+// capisce show --changed [--base <git ref>] [--format html|svg|diff] --out <folder> [--json]
+//                                                                                  the same for every symbol that changed
+//   without --base, changes and show --changed compare with where the branch left the default branch
+//   --theme light|dark picks the colours of an svg
+// capisce skill <name>                                                             print a skill: setup, update, address-comments, show-me or visual-pr
 // Every command reads capisce.config.mjs from --root <folder>, or from the current folder.
 // The map (program files, domains, stamps) is committed in .capisce in the root, unless the config names other paths.
 // The built page, comments, notes and timings are local files in that same folder, which capisce tells git to
 // ignore. --state <folder> or CAPISCE_STATE keeps the local files somewhere else.
 import { execFileSync, spawn } from "node:child_process";
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
@@ -27,7 +34,9 @@ import {
   program_files,
   program_paths,
 } from "../src/engine.mjs";
-import { mark_changes, review_needed, stamped } from "../src/review.mjs";
+import { name_index } from "../src/pseudo.mjs";
+import { changes_text, mark_changes, review_needed, stamped, symbol_changes } from "../src/review.mjs";
+import { FORMATS, THEMES, file_names, render_section, unknown_id_message } from "../src/show.mjs";
 import { prepare_state } from "../src/state.mjs";
 import { fetch_timings, timings_path, write_timings } from "../src/timings.mjs";
 
@@ -48,8 +57,10 @@ function option(name) {
 const root = resolve(option("--root") ?? ".");
 const base_ref = option("--base");
 const only = option("--only");
-const json_path = option("--json");
 const port = option("--port");
+const format = option("--format") ?? "html";
+const out = option("--out");
+const theme = option("--theme") ?? "light";
 const state = resolve(option("--state") ?? process.env.CAPISCE_STATE ?? join(root, ".capisce"));
 function flag(name) {
   const at = args.indexOf(name);
@@ -60,9 +71,17 @@ function flag(name) {
 }
 const all = flag("--all");
 const done = flag("--done");
+const changed = flag("--changed");
+// --json names a file for build. For changes and show it is a switch that asks for JSON on stdout.
+const prints_json = ["changes", "show"].includes(args.find((arg) => arg !== "--json")) && flag("--json");
+const json_path = option("--json");
 const [command, target, ...rest] = args;
 
 const PATH_NAMES = { program: "program files", domains: "domains" };
+const DEFAULT_BRANCHES = ["origin/HEAD", "main", "master"];
+
+const git = (...git_args) =>
+  execFileSync("git", git_args, { cwd: root, encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] }).trim();
 
 /** The config of the commit at `ref`, or an empty one when it cannot be read. */
 async function config_at(show, folder) {
@@ -93,11 +112,9 @@ function former_names_hint(config) {
  * that commit's own config says, and where capisce kept them by default before. Nothing is returned when that commit
  * has no map at all: every block would count as new, which says nothing about the branch.
  */
-async function map_at(ref, config) {
+async function map_at(ref, config, say = console.log) {
   const folder = mkdtempSync(join(tmpdir(), "capisce_base_"));
   try {
-    const git = (...git_args) =>
-      execFileSync("git", git_args, { cwd: root, encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] }).trim();
     // The project may sit in a folder of a larger repository. git archive, run in that folder, reads only it.
     const within = git("rev-parse", "--show-prefix");
     const is_at_ref = (path) => {
@@ -115,12 +132,12 @@ async function map_at(ref, config) {
         const places = [config[key], then[key]];
         base_config[key] = places.find((path) => typeof path === "string" && is_at_ref(path)) ?? config[key];
         if (base_config[key] !== config[key]) {
-          console.log(`At ${ref} the ${PATH_NAMES[key]} are in ${base_config[key]}: comparing with those.`);
+          say(`At ${ref} the ${PATH_NAMES[key]} are in ${base_config[key]}: comparing with those.`);
         }
       }
     }
     if (!is_at_ref(base_config.program)) {
-      console.log(`At ${ref} there is no map, so the page is built without changes.`);
+      say(`At ${ref} there is no map, so nothing counts as changed.`);
       return undefined;
     }
     const paths = [...config.sources, base_config.program, base_config.domains].filter(is_at_ref);
@@ -132,11 +149,114 @@ async function map_at(ref, config) {
   }
 }
 
+/** Fails when `ref` names no commit here, so a mistyped or unfetched base is not read as "nothing changed". */
+function check_ref(ref) {
+  try {
+    git("rev-parse", "--verify", "--quiet", `${ref}^{commit}`);
+  } catch {
+    throw new Error(`No commit is named "${ref}" in this repository. Fetch it, or pass --base with a branch, tag or commit that exists here.`);
+  }
+}
+
+/** The ids that changed since `ref`, with each change written onto the `head` map. `say` gets what a reader should know. */
+async function changes_since(ref, config, head, say) {
+  const base = await map_at(ref, config, say);
+  if (base === undefined) {
+    return [];
+  }
+  return mark_changes(base, head);
+}
+
+/** The commit the branch started from: where HEAD and the repository's default branch last met. */
+function default_base() {
+  for (const branch of DEFAULT_BRANCHES) {
+    try {
+      return git("rev-parse", "--short", git("merge-base", "HEAD", branch));
+    } catch {
+      continue;
+    }
+  }
+  throw new Error("The default branch of this repository could not be found. Pass --base <git ref> to say what to compare with.");
+}
+
+/** Lists the symbols whose map changed since the base. */
+async function print_changes(config, head) {
+  const base = base_ref ?? default_base();
+  check_ref(base);
+  await changes_since(base, config, head, console.error);
+  const changes = symbol_changes(head);
+  const branch = git("rev-parse", "--abbrev-ref", "HEAD");
+  if (prints_json) {
+    console.log(JSON.stringify({ base, head: branch, changes }, null, 2));
+    return;
+  }
+  console.log(changes_text(base, branch, changes));
+}
+
+/** Writes the section of each named symbol, or of each changed one, to stdout or to files. */
+async function show_sections(config, head, ids) {
+  if (FORMATS[format] === undefined) {
+    throw new Error(`"${format}" is not a format. Pass --format html, svg or diff.`);
+  }
+  if (!THEMES.includes(theme)) {
+    throw new Error(`"${theme}" is not a theme. Pass --theme light or dark.`);
+  }
+  if (changed === ids.length > 0) {
+    throw new Error("Use: capisce show <symbol id>... or capisce show --changed. See the top of bin/capisce.mjs.");
+  }
+  let base = base_ref;
+  if (changed) {
+    base ??= default_base();
+  }
+  const with_diff = base !== undefined;
+  if (with_diff) {
+    check_ref(base);
+    await changes_since(base, config, head, console.error);
+  }
+  if (changed) {
+    ids = symbol_changes(head).map((change) => change.id);
+  }
+  const index = name_index(head.symbols);
+  const unknown = ids.find((id) => !index.symbols.has(id));
+  if (unknown !== undefined) {
+    let hint = "";
+    if (!with_diff) {
+      hint = "\n\n  A symbol that was removed is shown only with --base <git ref>.";
+    }
+    throw new Error(`${unknown_id_message(unknown, [...index.symbols.keys()])}${hint}`);
+  }
+  const document_of = (id) => render_section(index.symbols.get(id), index, { format, with_diff, theme });
+  const to_folder = changed || ids.length > 1 || (out !== undefined && existsSync(out) && statSync(out).isDirectory());
+  if (to_folder && out === undefined) {
+    throw new Error("Several symbols are written as one file each, so they need a folder. Pass --out <folder>.");
+  }
+  if (out === undefined) {
+    process.stdout.write(document_of(ids[0]));
+    return;
+  }
+  let paths = [resolve(out)];
+  if (to_folder) {
+    paths = file_names(ids, FORMATS[format]).map((name) => resolve(out, name));
+  }
+  const written = ids.map((id, at) => {
+    mkdirSync(dirname(paths[at]), { recursive: true });
+    writeFileSync(paths[at], document_of(id));
+    return { id, path: paths[at] };
+  });
+  if (prints_json) {
+    console.log(JSON.stringify(written, null, 2));
+  } else if (written.length === 0) {
+    console.log(`The map has no changed symbols since ${base}.`);
+  } else {
+    console.log(written.map(({ id, path }) => `${id} -> ${path}`).join("\n"));
+  }
+}
+
 async function run() {
   if (command === "skill") {
     const path = join(home, "skills", FORMER_SKILL_NAMES[target] ?? target ?? "", "SKILL.md");
     if (!existsSync(path)) {
-      throw new Error(`No skill named "${target}". The skills are: setup, update, address-comments.`);
+      throw new Error(`No skill named "${target}". The skills are: setup, update, address-comments, show-me, visual-pr.`);
     }
     console.log(readFileSync(path, "utf8"));
     return;
@@ -193,9 +313,17 @@ async function run() {
     }
     return;
   }
+  if (command === "changes") {
+    await print_changes(config, head);
+    return;
+  }
+  if (command === "show") {
+    await show_sections(config, head, [target, ...rest].filter((id) => id !== undefined));
+    return;
+  }
   if (command !== "build" && command !== "serve") {
     throw new Error(
-      "Use: capisce build | check | stamp | serve | timings | comments | reply | skill. See the top of bin/capisce.mjs.",
+      "Use: capisce build | check | stamp | serve | timings | changes | show | comments | reply | skill. See the top of bin/capisce.mjs.",
     );
   }
   const serving = command === "serve";
@@ -204,15 +332,11 @@ async function run() {
   let changes;
   if (base_ref !== undefined) {
     const needs_review = review_needed(head, root, config).length > 0;
-    const base = await map_at(base_ref, config);
-    let ids = [];
-    if (base !== undefined) {
-      ids = mark_changes(base, head);
-    }
+    const ids = await changes_since(base_ref, config, head, console.log);
     if (ids.length > 0) {
       changes = {
         base: base_ref,
-        head: execFileSync("git", ["rev-parse", "--abbrev-ref", "HEAD"], { cwd: root, encoding: "utf8" }).trim(),
+        head: git("rev-parse", "--abbrev-ref", "HEAD"),
         ids,
         needs_review,
       };

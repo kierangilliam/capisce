@@ -1,6 +1,7 @@
 // Keeps the map honest: stamps what was reviewed, says what needs a review, and compares two maps.
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
+import { is_step_header, step_title } from "./pseudo.mjs";
 
 export const stamped = (map) =>
   Object.fromEntries(
@@ -100,9 +101,8 @@ function line_diff(before, after) {
 function steps_of(pseudo) {
   const steps = [];
   for (const line of pseudo) {
-    const header = /^\s*#> (.*)$/.exec(line)?.[1];
-    if (header !== undefined) {
-      steps.push({ title: header.split(" | ")[0].split(" -> ")[0].trim(), body: [line] });
+    if (is_step_header(line)) {
+      steps.push({ title: step_title(line), body: [line] });
     } else if (steps.length > 0) {
       steps.at(-1).body.push(line);
     }
@@ -210,4 +210,21 @@ export function mark_changes(base, head) {
     }
   }
   return changes;
+}
+
+/** The symbols that `mark_changes` marked on a map, each as `{ id, kind, domain, status, parts }`. */
+export const symbol_changes = (map) =>
+  map.symbols
+    .filter((symbol) => symbol.diff !== undefined)
+    .map(({ id, kind, domain, diff }) => ({ id, kind, domain, status: diff.status, parts: diff.parts }));
+
+/** The changed symbols as text to print: a sentence, then one symbol per line in columns. */
+export function changes_text(base, head, changes) {
+  if (changes.length === 0) {
+    return `No symbol of the map changed on ${head} since ${base}.`;
+  }
+  const rows = changes.map((change) => [change.status, change.kind, change.id, change.domain, change.parts.join(", ")]);
+  const widths = [0, 1, 2, 3].map((column) => Math.max(...rows.map((row) => row[column].length)));
+  const lines = rows.map((row) => row.map((cell, column) => cell.padEnd(widths[column] ?? 0)).join("  ").trimEnd());
+  return [`What ${head} changes in the map, compared with ${base}:`, "", ...lines].join("\n");
 }

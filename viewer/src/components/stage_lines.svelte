@@ -1,7 +1,7 @@
 <script lang="ts">
   import { symbol_of } from "../map/catalog";
+  import { last_block_of, stage_blocks, type StageBlock } from "../../../src/pseudo.mjs";
   import { prose_tokens, pseudo_tokens } from "../map/pseudo_tokens";
-  import { last_block_of, stage_blocks, type StageBlock } from "../map/stage_blocks";
   import { steps_of } from "../map/steps";
   import type { MapSymbol } from "../types";
   import Peek from "./peek.svelte";

@@ -26,9 +26,33 @@ node /path/to/capisce/bin/capisce.mjs serve --port 8094      # build, then serve
 node /path/to/capisce/bin/capisce.mjs timings                # fetch how long each endpoint takes
 node /path/to/capisce/bin/capisce.mjs comments               # print the comments that wait on a reply
 node /path/to/capisce/bin/capisce.mjs reply <id> "<text>" --done   # answer one in its thread
+node /path/to/capisce/bin/capisce.mjs changes                # list the symbols whose map changed on this branch
+node /path/to/capisce/bin/capisce.mjs show <symbol id>       # print one symbol's pseudo-code as a small HTML file
 ```
 
-A project needs a `capisce.config.mjs` at its root. The setup skill says how to write one. Everything else capisce keeps for the project is in one `.capisce` folder beside it, described below. `check`, `stamp`, `comments` and `reply` need no install.
+A project needs a `capisce.config.mjs` at its root. The setup skill says how to write one. Everything else capisce keeps for the project is in one `.capisce` folder beside it, described below. `check`, `stamp`, `comments`, `reply`, `changes` and `show` need no install.
+
+### One symbol without the page
+
+`changes` and `show` give an agent, a chat or a pull request one symbol's pseudo-code without opening the page.
+
+```sh
+capisce changes [--base <git ref>] [--json]
+capisce show <symbol id>... [--base <git ref>] [--format html|svg|diff] [--out <file or folder>]
+capisce show --changed     [--base <git ref>] [--format html|svg|diff] --out <folder> [--json]
+```
+
+`changes` lists the symbols whose map differs from a base commit, one per line: status (`added`, `changed` or `removed`), kind, id, domain, and the parts that changed (`doc`, `pseudo`, `flow`, `code`). `--json` prints `{ "base", "head", "changes": [{ "id", "kind", "domain", "status", "parts" }] }` and nothing else. Without `--base`, the base is the commit where the branch left the default branch: the merge-base of `HEAD` with `origin/HEAD`, then `main`, then `master`. When none of them exists, pass `--base`.
+
+`show` writes a symbol's section: its id and kind, its doc, and its pseudo-code with the stage labels beside the lines they cover. It looks like the code panel of the page and takes its colours and type from the page's own styles. With `--base` it shows the diff against that commit: added and removed lines, added, changed and removed stages, a status badge, and the doc before and after when the doc changed. A symbol that did not change is shown plainly. `--changed` shows every symbol that `changes` lists.
+
+| `--format` | What it writes |
+| --- | --- |
+| `html` (the default) | One document with its styles inside, no script, and nothing fetched. It is as tall as its content, follows the reader's light or dark setting, and long lines scroll inside it. |
+| `svg` | A picture made of plain shapes and text, so it shows the same as an image in a pull request. `--theme light` (the default) or `--theme dark` picks its colours. Its width comes from the longest line, counted in characters. |
+| `diff` | Plain text. With `--base`, one `@@ <id> (<status>) @@` line, then a `doc:` line before and after when the doc changed, then each line of pseudo-code after a space, `+` or `-`, to put in a fenced `diff` block. Without it, the pseudo-code as written. |
+
+With one id, the file goes to stdout, or to the file that `--out` names. With several ids or `--changed`, `--out` is a folder and each symbol gets one file, named after its id with every run of other characters turned into `_`: `PUT /api/things/:id` becomes `PUT_api_things_id.svg`. Each written file is printed as `id -> path`, or with `--json` as an array of `{ "id", "path" }`. An id that names no symbol fails and lists the ids close to it.
 
 ## Links
 
@@ -150,15 +174,17 @@ A branch comparison still works across a move or a rename. When the commit named
 
 ## Skills
 
-Three skills tell an agent how to work with a map:
+Five skills tell an agent how to work with a map:
 
 - **setup**: this builds capisce's state on a new codebase. To be used once during setup.
 - **update**: this updates capisce's state by writing pseudo-code and updating the glossary for new code changes.
 - **address-comments**: an agent will pull your comments and address them, either replying to your comment or making a change to your codebase.
+- **show-me**: this shows what you are talking about as a picture, using the pseudo-code where it covers the topic.
+- **visual-pr**: this writes a pull request's description, with the changed pseudo-code as pictures.
 
 The glossary is the map's terms: the words of the business, each said once in plain words.
 
-Each skill is one file, `skills/<name>/SKILL.md`. `node bin/capisce.mjs skill <name>` prints one, for any agent.
+Each skill is one file, `skills/<name>/SKILL.md`. `visual-pr` also has a `references` folder beside its file, with the template it writes from. `node bin/capisce.mjs skill <name>` prints one, for any agent.
 
 ### Install the skills
 
@@ -169,7 +195,7 @@ Each skill is one file, `skills/<name>/SKILL.md`. `node bin/capisce.mjs skill <n
 /plugin install capisce@capisce
 ```
 
-The skills then appear as `/capisce:setup`, `/capisce:update` and `/capisce:address-comments`. To try the plugin from a clone without installing it, start Claude Code with `claude --plugin-dir /path/to/capisce`.
+The skills then appear as `/capisce:setup`, `/capisce:update`, `/capisce:address-comments`, `/capisce:show-me` and `/capisce:visual-pr`. To try the plugin from a clone without installing it, start Claude Code with `claude --plugin-dir /path/to/capisce`.
 
 **With the skills CLI**, for other agents:
 
@@ -177,7 +203,7 @@ The skills then appear as `/capisce:setup`, `/capisce:update` and `/capisce:addr
 npx skills add <owner>/capisce
 ```
 
-This copies the skills into the project for the agents you pick. They keep their plain names there: `setup`, `update` and `address-comments`. If `setup` or `update` clashes with a skill you already have, install one skill at a time under another name, for example `npx skills add <owner>/capisce --skill setup --rename capisce-setup`.
+This copies the skills into the project for the agents you pick. They keep their plain names there: `setup`, `update`, `address-comments`, `show-me` and `visual-pr`. If one of them clashes with a skill you already have, install one skill at a time under another name, for example `npx skills add <owner>/capisce --skill setup --rename capisce-setup`.
 
 To turn the plugin on for everyone who works in a project, commit this to the project's `.claude/settings.json`:
 

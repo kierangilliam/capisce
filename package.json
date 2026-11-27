@@ -10,7 +10,8 @@
   "scripts": {
     "dev": "vite --config viewer/vite.config.ts",
     "build": "vite build --config viewer/vite.config.ts",
-    "check": "svelte-check --tsconfig viewer/tsconfig.json"
+    "check": "svelte-check --tsconfig viewer/tsconfig.json",
+    "test": "node --test \"test/*.test.mjs\""
   },
   "devDependencies": {
     "@sveltejs/vite-plugin-svelte": "^7.3.1",

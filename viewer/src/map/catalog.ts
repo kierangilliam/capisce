@@ -1,16 +1,11 @@
+import { bare_name, KIND_LABELS, name_index, resolve_name } from "../../../src/pseudo.mjs";
 import type { Changes, Domain, MapData, MapSymbol } from "../types";
+
+export { bare_name, KIND_LABELS };
 
 export const CANVAS_PAGE = "Domains";
 export const CHANGES_PAGE = "Changes";
 const DOMAIN_PREFIX = "domain:";
-
-export const KIND_LABELS: Record<MapSymbol["kind"], string> = {
-  route: "Endpoint",
-  def: "Function",
-  model: "Model",
-  term: "Term",
-  flow: "Flow",
-};
 
 type Catalog = {
   data: MapData;
@@ -30,20 +25,14 @@ export const catalog: Catalog = {
   changes: undefined,
 };
 
-export const bare_name = (id: string): string => id.split(".").at(-1) ?? id;
-
 export function load_catalog(data: MapData): void {
   catalog.data = data;
   catalog.changes = data.changes;
-  catalog.symbols = new Map(data.symbols.map((symbol) => [symbol.id, symbol]));
+  Object.assign(catalog, name_index(data.symbols));
   catalog.domains = new Map(data.domains.map((domain) => [domain.id, domain]));
   for (const symbol of data.symbols) {
     if (symbol.kind === "def" || symbol.kind === "route") {
       catalog.modules_with_code.add(symbol.module);
-    }
-    if (symbol.kind === "def" && symbol.pseudo.length > 0) {
-      const bare = bare_name(symbol.id);
-      catalog.bare_owners.set(bare, [...(catalog.bare_owners.get(bare) ?? []), symbol.id]);
     }
   }
 }
@@ -56,22 +45,8 @@ export const symbol_of = (id: string | undefined): MapSymbol | undefined => {
 };
 
 /** The id that `name` means when written inside `from_module`, or undefined when it names nothing in the map. */
-export function resolve(name: string, from_module: string, is_called: boolean): string | undefined {
-  if (catalog.symbols.has(name)) {
-    return name;
-  }
-  if (name.includes(".") || !is_called) {
-    return undefined;
-  }
-  if (catalog.symbols.has(`${from_module}.${name}`)) {
-    return `${from_module}.${name}`;
-  }
-  const owners = catalog.bare_owners.get(name) ?? [];
-  if (owners.length === 1) {
-    return owners[0];
-  }
-  return undefined;
-}
+export const resolve = (name: string, from_module: string, is_called: boolean): string | undefined =>
+  resolve_name(catalog, name, from_module, is_called);
 
 export const domain_page = (name: string): string => `${DOMAIN_PREFIX}${name}`;
 

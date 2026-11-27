@@ -71,12 +71,12 @@
   margin: 0 20px; border-top: 1px solid var(--cp_border);
 }
 .lines.prose > .stage:not(.peek_row) { border-bottom: 1px solid var(--cp_border); counter-increment: step; }
-.lines.prose > .peek_row > .stage_label { display: none; }
 .lines.prose > .peek_row .peek { left: 0; width: calc(100cqw - 40px); margin: 12px 0 16px; }
 .lines.prose > .stage > .stage_label {
-  display: flex; gap: 10px; padding: 11px 16px 11px 10px; border-right: 0; background: none;
+  display: flex; position: static; gap: 10px; padding: 11px 16px 11px 10px; border-right: 0; background: none;
   font: 500 13px/1.5 var(--cp_sans); color: var(--cp_foreground);
 }
+.lines.prose > .peek_row > .stage_label { display: none; }
 .lines.prose > .stage:not(.peek_row) > .stage_label::before { content: counter(step, decimal-leading-zero); flex: 0 0 auto; padding-top: 2px; font: 500 10.5px/1.5 var(--cp_mono); color: var(--cp_muted); }
 .lines.prose > .stage > .stage_body { flex: 1 1 0; padding: 11px 0; }
 .lines.prose > .stage > .stage_body > .line { padding: 0; white-space: normal; color: var(--cp_muted); min-height: 0; }

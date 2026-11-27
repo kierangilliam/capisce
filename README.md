@@ -69,6 +69,8 @@ npx skills add kierangilliam/capisce
 - `/capisce:setup` This builds Capisce’s state on a new codebase. To be used once during setup.
 - `/capisce:update` This updates Capisce’s state by writing pseudo-code and updating the glossary for new code changes.
 - `/capisce:address-comments` An agent will pull your comments and address them, either replying to your comment or making a change to your codebase.
+- `/capisce:show-me` This shows what you are talking about as a picture, using the pseudo-code where it covers the topic.
+- `/capisce:visual-pr` This writes a pull request’s description, with the changed pseudo-code as pictures.
 
 **Examples**
 

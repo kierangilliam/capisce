@@ -1,7 +1,7 @@
 {
   "name": "capisce",
   "version": "0.1.0",
-  "description": "Skills for capisce, a map of a codebase at the level of business behavior: set one up, keep it up to date, and answer the comments left on it.",
+  "description": "Skills for capisce, a map of a codebase at the level of business behavior: set one up, keep it up to date, answer the comments left on it, and show and describe changes with it.",
   "author": { "name": "capisce contributors" },
   "keywords": ["codebase-map", "pseudo-code", "documentation"]
 }

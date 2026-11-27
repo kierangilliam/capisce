@@ -1,27 +1,49 @@
+/* The trace is a sequence diagram drawn as swimlanes: a column per module, every other one banded, under a raised
+   header row with a firm rule. Every label sits in a solid box with a dark edge, so no line ever runs through its
+   words, and the arrows are solid and dark so the path is easy to follow. The accent marks only the picked step. */
 .trace { display: block; }
-.lane_line { stroke: var(--cp_border); stroke-dasharray: 3 3; }
-.lane_head rect { fill: var(--cp_background); stroke: var(--cp_foreground); }
-.lane_head text { font: 10.5px var(--cp_mono); fill: var(--cp_module); text-anchor: middle; }
-.trace_bar { fill: var(--cp_background); stroke: var(--cp_foreground); }
-.trace_row { cursor: pointer; outline: none; }
+.trace_heads {
+  position: sticky; top: -14px; z-index: 1; pointer-events: none;
+  background: var(--cp_raised); border-bottom: 1.5px solid var(--cp_foreground);
+}
+.trace_heads_cell {
+  position: absolute; top: 0; bottom: 0; display: flex; flex-direction: column; align-items: center; justify-content: center;
+  border-right: 1px solid color-mix(in srgb, var(--cp_border) 70%, transparent);
+  font: 600 10.5px/13px var(--cp_mono); color: var(--cp_foreground); text-align: center;
+}
+.lane_band { fill: transparent; }
+.lane_band.odd { fill: var(--cp_foreground); fill-opacity: 0.025; }
+.lane_divider { stroke: var(--cp_border); stroke-opacity: 0.7; }
+.lane_line { stroke: var(--cp_edge); stroke-dasharray: 2 4; }
+.lane_head rect { fill: var(--cp_raised); }
+.lane_head text { font: 600 10.5px var(--cp_mono); fill: var(--cp_foreground); text-anchor: middle; }
+.lane_head_rule { stroke: var(--cp_foreground); stroke-width: 1.5; }
+.trace_bar { fill: var(--cp_background); stroke: var(--cp_foreground); stroke-width: 1.25; }
+/* A row shows it is picked with the accent, so it never draws the page's focus outline around the whole row. */
+.capisce .trace_row { cursor: pointer; outline: none; }
 .trace_hit { fill: var(--cp_foreground); fill-opacity: 0; }
-.trace_row:hover .trace_hit { fill-opacity: 0.04; }
-.trace_row.selected .trace_hit { fill-opacity: 0.08; }
-.trace_row.added .trace_hit { fill: var(--cp_added); fill-opacity: 0.14; }
-.trace_row.changed .trace_hit { fill-opacity: 0.05; }
+.trace_row:hover .trace_hit { fill-opacity: 0.03; }
+.trace_row.selected .trace_hit { fill: var(--cp_accent); fill-opacity: 0.04; }
+.trace_row.added .trace_hit { fill: var(--cp_added); fill-opacity: 0.12; }
+.trace_row.changed .trace_hit { fill-opacity: 0.04; }
 .trace_mark { fill: transparent; }
 .trace_row.changed .trace_mark { fill: var(--cp_muted); }
 .trace_row.added .trace_mark { fill: var(--cp_added); }
-.trace_row.selected .trace_mark { fill: var(--cp_foreground); }
-.trace_arrow { stroke: var(--cp_foreground); fill: none; }
-.trace_row.selected .trace_arrow { stroke-width: 2; }
+.trace_row.selected .trace_mark { fill: var(--cp_accent); }
+.trace_arrow { stroke: var(--cp_foreground); stroke-width: 1.5; fill: none; }
 .trace_head { fill: var(--cp_foreground); }
-.trace_return { stroke: var(--cp_muted); stroke-dasharray: 4 3; fill: none; }
+.trace_row.selected .trace_arrow { stroke: var(--cp_accent); }
+.trace_row.selected .trace_head { fill: var(--cp_accent); }
+.trace_return { stroke: var(--cp_muted); stroke-dasharray: 5 4; fill: none; }
 .trace_return_head { fill: var(--cp_muted); }
-.trace_label { font: 11.5px var(--cp_sans); fill: var(--cp_foreground); }
-.trace_row.selected .trace_label { font-weight: 600; }
-.trace_note { fill: var(--cp_background); stroke: var(--cp_foreground); }
-.trace_row.selected .trace_note { fill: var(--cp_foreground); }
-.trace_row.selected .trace_note ~ .trace_label { fill: var(--cp_background); }
-.trace_exit rect { fill: var(--cp_background); stroke: var(--cp_muted); stroke-dasharray: 3 2; }
-.trace_exit text { font: 10.5px var(--cp_mono); fill: var(--cp_muted); }
+.trace_note { fill: var(--cp_background); stroke: var(--cp_foreground); stroke-width: 1.5; }
+.trace_label { font: 500 12px var(--cp_sans); fill: var(--cp_foreground); }
+.trace_row:hover .trace_note { stroke: var(--cp_accent); }
+.trace_row.selected .trace_note { stroke: var(--cp_accent); stroke-width: 2; }
+.trace_row.selected .trace_label { fill: var(--cp_accent); }
+/* Exits (errors and early returns) are small red tags under the step they leave from. */
+.trace_exit rect {
+  fill: color-mix(in srgb, var(--cp_removed) 7%, var(--cp_background));
+  stroke: color-mix(in srgb, var(--cp_removed) 25%, var(--cp_background));
+}
+.trace_exit text { font: 500 10.5px var(--cp_mono); fill: color-mix(in srgb, var(--cp_removed) 80%, var(--cp_foreground)); }

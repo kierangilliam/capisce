@@ -166,6 +166,70 @@ def role_set(project_id, user_id, role):
     delete the person's RoleAssignment on the project, if any
     save RoleAssignment(project_id, user_id, role)
 
+=== user_store.user_by_name
+kind: def
+src: api/src/db/user_store.rs :: pub fn user_by_name(
+doc: Finds a person by the name they sign in with.
+---
+def user_by_name(name):
+    return the User with this name, or None
+
+=== user_store.user_by_id
+kind: def
+src: api/src/db/user_store.rs :: pub fn user_by_id(
+doc: Finds a person by id, such as the one a session belongs to.
+---
+def user_by_id(user_id):
+    return the User with this id, or None
+
+=== user_store.user_record_failed_login
+kind: def
+src: api/src/db/user_store.rs :: pub fn user_record_failed_login(
+doc: Counts one more wrong password for an account, and says how many there have been in a row.
+---
+def user_record_failed_login(user_id):
+    if there is no User with this id:
+        return 0
+    user.failed_logins += 1
+    return user.failed_logins
+
+=== user_store.session_by_token
+kind: def
+src: api/src/db/user_store.rs :: pub fn session_by_token(
+doc: Finds the session a token belongs to. An expired session is still found; the caller decides what to do with it.
+---
+def session_by_token(token):
+    return the Session with this token, or None
+
+=== user_store.session_delete
+kind: def
+src: api/src/db/user_store.rs :: pub fn session_delete(
+doc: Ends a session by deleting it, so its token no longer works. A token with no session is not an error.
+---
+def session_delete(token):
+    delete the Session with this token, if any
+
+=== user_store.role_of
+kind: def
+src: api/src/db/user_store.rs :: pub fn role_of(
+doc: The role a person has on a project, or none if they have no role there.
+---
+def role_of(project_id, user_id):
+    assignment = the RoleAssignment for this person
+        on this project
+    if assignment is None:
+        return None
+    return assignment.role
+
+=== user_store.admin_count
+kind: def
+src: api/src/db/user_store.rs :: pub fn admin_count(
+doc: How many people are admins of a project.
+---
+def admin_count(project_id):
+    return the number of RoleAssignments on the project
+        whose role is "admin"
+
 === Signing in
 kind: flow
 domain: Access

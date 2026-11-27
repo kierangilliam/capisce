@@ -214,6 +214,24 @@ def project_delete(project_id):
     delete every RoleAssignment on the project
     delete the Project
 
+=== project_store.project_by_name
+kind: def
+src: api/src/db/project_store.rs :: pub fn project_by_name(
+doc: Finds a project by name. Project names are unique across the whole rack.
+---
+def project_by_name(name):
+    return the Project with this name, or None
+
+=== project_store.projects_for_user
+kind: def
+src: api/src/db/project_store.rs :: pub fn projects_for_user(
+doc: The projects a person has any role on, in order of name.
+---
+def projects_for_user(user_id):
+    return every Project where
+        user_store.role_of(project.id, user_id) is not None,
+        sorted by name
+
 === Switching project
 kind: flow
 domain: Projects

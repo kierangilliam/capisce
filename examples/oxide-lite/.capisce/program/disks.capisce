@@ -143,6 +143,59 @@ def disk_insert(
     save disk
     return disk
 
+=== disk_store.disk_by_id
+kind: def
+src: api/src/db/disk_store.rs :: pub fn disk_by_id(
+doc: Finds a disk by id, in any project. Callers check the project themselves.
+---
+def disk_by_id(disk_id):
+    return the Disk with this id, or None
+
+=== disk_store.disk_by_name
+kind: def
+src: api/src/db/disk_store.rs :: pub fn disk_by_name(
+doc: Finds a disk by name within one project. Two projects may each have a disk of the same name.
+---
+def disk_by_name(project_id, name):
+    return the project's Disk with this name, or None
+
+=== disk_store.disks_in_project
+kind: def
+src: api/src/db/disk_store.rs :: pub fn disks_in_project(
+doc: Every disk in a project, boot disks included, in order of name.
+---
+def disks_in_project(project_id):
+    return the project's Disks, sorted by name
+
+=== disk_store.disks_attached_to
+kind: def
+src: api/src/db/disk_store.rs :: pub fn disks_attached_to(
+doc: The disks an instance holds, its boot disk included.
+---
+def disks_attached_to(instance_id):
+    return every Disk whose attached_instance_id
+        is this instance
+
+=== disk_store.disk_set_attachment
+kind: def
+src: api/src/db/disk_store.rs :: pub fn disk_set_attachment(
+doc: Attaches a disk to an instance, or detaches it when given none. It checks no rules; the caller has.
+---
+def disk_set_attachment(disk_id, instance_id):
+    disk = the Disk with this id
+    if disk is None:
+        return None
+    disk.attached_instance_id = instance_id    # None detaches
+    return disk
+
+=== disk_store.disk_delete
+kind: def
+src: api/src/db/disk_store.rs :: pub fn disk_delete(
+doc: Deletes a disk. It does not check whether the disk is attached; the caller has.
+---
+def disk_delete(disk_id):
+    delete the Disk with this id, if any
+
 === Attaching a disk to an instance
 kind: flow
 domain: Disks

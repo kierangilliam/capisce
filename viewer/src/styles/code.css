@@ -1,14 +1,41 @@
-.code_header { position: relative; padding: 0 56px 10px 14px; min-height: 30px; }
+.code_header { position: relative; padding: 0 60px 14px 20px; min-height: 30px; }
 .code_name { font: 600 13px/1.4 var(--cp_mono); overflow-wrap: anywhere; color: color-mix(in srgb, var(--cp_foreground) 66%, var(--cp_background)); }
-.code_doc { margin: 4px 0 0; color: var(--cp_foreground); max-width: 62ch; }
+.code_doc { margin: 6px 0 0; max-width: 68ch; font-size: 13.5px; line-height: 1.5; color: var(--cp_muted); }
 .capisce .code_toggle {
-  position: absolute; top: -2px; right: 12px; padding: 1px 7px;
+  position: absolute; top: -2px; right: 16px; padding: 1px 7px;
   border: 1px solid var(--cp_border); border-radius: var(--cp_radius); font: 600 11.5px/1.5 var(--cp_sans); letter-spacing: 0.5px; color: var(--cp_muted);
 }
-.capisce .code_toggle:not(:disabled):hover, .capisce .code_toggle.on { background: var(--cp_foreground); border-color: var(--cp_foreground); color: var(--cp_background); }
+/* A square key, like the other small controls: a square </> icon centered in a 28px box. */
+.capisce .code_toggle {
+  display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; padding: 0;
+  font: 500 10px/1 var(--cp_mono); letter-spacing: -0.04em; background: var(--cp_background);
+  transition: border-color 120ms var(--cp_ease);
+}
+.code_icon { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.2; stroke-linecap: square; stroke-linejoin: miter; }
+.capisce .code_toggle:not(:disabled):hover { border-color: var(--cp_edge); background: var(--cp_raised); color: var(--cp_foreground); }
+.capisce .code_toggle.on { border-color: var(--cp_accent_edge); background: var(--cp_accent_wash); color: var(--cp_accent); }
 .capisce .code_toggle:disabled { cursor: default; opacity: 0.45; }
 .capisce .peek_open { text-decoration: underline; text-underline-offset: 2px; white-space: nowrap; }
-.no_pseudo { padding: 0 14px 10px; color: var(--cp_muted); font-size: 12px; }
+.no_pseudo { padding: 0 20px 10px; color: var(--cp_muted); font-size: 12px; }
+/* Where the real code comes from: its file, as a chip. */
+.source_row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 0 20px 12px; }
+.file_chip {
+  padding: 2px 8px; border: 1px solid var(--cp_border); border-radius: var(--cp_radius); background: var(--cp_raised);
+  font: 500 11.5px/1.5 var(--cp_mono); color: var(--cp_foreground); overflow-wrap: anywhere;
+}
+.no_pseudo_note { font-size: 12px; color: var(--cp_muted); }
+
+/* The real code is highlighted as in an editor. The colours are scoped here, so the pseudo-code keeps its quieter marks. */
+.real_code { --hl_keyword: #a0287a; --hl_string: #1d7d48; --hl_type: #0e7490; --hl_call: #2457d6; --hl_number: #b45309;
+  --hl_comment: #6b7a90; --hl_macro: #7c3aed; --hl_constant: #b45309; }
+.real_code .keyword { color: var(--hl_keyword); }
+.real_code .string { color: var(--hl_string); }
+.real_code .comment { color: var(--hl_comment); font-style: italic; }
+.real_code .type { color: var(--hl_type); }
+.real_code .call { color: var(--hl_call); }
+.real_code .own_name { color: var(--hl_call); font-weight: 600; }
+.real_code .number, .real_code .constant { color: var(--hl_number); }
+.real_code .macro, .real_code .attribute { color: var(--hl_macro); }
 
 .lines { --stage_margin: 156px; font: 12px/1.6 var(--cp_mono); min-width: max-content; }
 .stage { display: flex; align-items: stretch; }
@@ -16,12 +43,12 @@
 .stage_label {
   flex: 0 0 var(--stage_margin); width: var(--stage_margin);
   position: sticky; left: 0; z-index: 1;
-  padding: 0 10px 0 14px;
+  padding: 0 12px 0 20px;
   background: var(--cp_background); border-right: 1px solid var(--cp_border);
   font: 11.5px/19.2px var(--cp_sans); color: var(--cp_muted); white-space: normal; overflow-wrap: break-word;
 }
 .stage.in_step:hover > .stage_label { color: var(--cp_foreground); }
-.stage.selected > .stage_label { color: var(--cp_foreground); font-weight: 600; border-right-color: var(--cp_foreground); box-shadow: inset -2px 0 0 var(--cp_foreground); }
+.stage.selected > .stage_label { color: var(--cp_accent); font-weight: 500; border-right-color: var(--cp_accent); box-shadow: inset -1.5px 0 0 var(--cp_accent); }
 .stage_label.added { box-shadow: inset 3px 0 0 var(--cp_added); background: color-mix(in srgb, var(--cp_added) 14%, var(--cp_background)); color: var(--cp_foreground); }
 .stage_label.changed { box-shadow: inset 3px 0 0 var(--cp_foreground); color: var(--cp_foreground); }
 .stage_label.removed { box-shadow: inset 3px 0 0 var(--cp_removed); background: color-mix(in srgb, var(--cp_removed) 10%, var(--cp_background)); text-decoration: none; }
@@ -30,19 +57,36 @@
 .stage_change { margin-left: 6px; font: 10px var(--cp_mono); color: var(--cp_muted); white-space: nowrap; }
 .lines.no_stages > .stage > .stage_label { display: none; }
 .stage_body { flex: 1 0 auto; min-width: 0; }
-.stage.selected > .stage_body { background: var(--cp_soft); }
-.line { position: relative; padding: 0 14px 0 16px; white-space: pre; min-height: 1.6em; }
+.stage.selected > .stage_body { background: var(--cp_accent_tint); }
+.line { position: relative; padding: 0 16px 0 18px; white-space: pre; min-height: 1.6em; }
 .line.added::before, .line.removed::before { position: absolute; left: 4px; color: var(--cp_muted); text-decoration: none; }
 .line.added::before { content: "+"; }
 .line.removed::before { content: "−"; }
-.line.focused { outline: none; box-shadow: inset 3px 0 0 var(--cp_foreground); }
+.line.focused { outline: none; box-shadow: inset 2px 0 0 var(--cp_accent); }
 
-.lines.prose { --stage_margin: 200px; font: 13px/1.55 var(--cp_sans); min-width: 0; max-width: 92ch; }
-.lines.prose > .stage { margin-top: 12px; }
-.lines.prose > .stage > .stage_label { font: 600 13px/1.55 var(--cp_sans); color: var(--cp_foreground); }
-.lines.prose > .stage > .stage_body { flex: 1 1 0; }
-.lines.prose > .stage > .stage_body > .line { white-space: normal; color: var(--cp_muted); min-height: 0; }
+/* A flow's steps are a numbered table: the step's name on the left, what happens in grey on the right, a hairline
+   between rows. */
+.lines.prose {
+  --stage_margin: 220px; counter-reset: step; font: 13px/1.55 var(--cp_sans); min-width: 0; max-width: 96ch;
+  margin: 0 20px; border-top: 1px solid var(--cp_border);
+}
+.lines.prose > .stage:not(.peek_row) { border-bottom: 1px solid var(--cp_border); counter-increment: step; }
+.lines.prose > .peek_row > .stage_label { display: none; }
+.lines.prose > .peek_row .peek { left: 0; width: calc(100cqw - 40px); margin: 12px 0 16px; }
+.lines.prose > .stage > .stage_label {
+  display: flex; gap: 10px; padding: 11px 16px 11px 10px; border-right: 0; background: none;
+  font: 500 13px/1.5 var(--cp_sans); color: var(--cp_foreground);
+}
+.lines.prose > .stage:not(.peek_row) > .stage_label::before { content: counter(step, decimal-leading-zero); flex: 0 0 auto; padding-top: 2px; font: 500 10.5px/1.5 var(--cp_mono); color: var(--cp_muted); }
+.lines.prose > .stage > .stage_body { flex: 1 1 0; padding: 11px 0; }
+.lines.prose > .stage > .stage_body > .line { padding: 0; white-space: normal; color: var(--cp_muted); min-height: 0; }
+.lines.prose > .stage.in_step:not(.selected):hover { background: var(--cp_raised); }
+.lines.prose > .stage.selected { background: var(--cp_accent_tint); box-shadow: inset 2px 0 0 var(--cp_accent); }
+.lines.prose > .stage.selected > .stage_label { box-shadow: none; }
+.lines.prose > .stage.selected > .stage_label, .lines.prose > .stage.selected > .stage_label::before { color: var(--cp_accent); }
+.lines.prose > .stage.selected > .stage_body { background: none; }
 .lines.prose > .stage.selected > .stage_body > .line { color: var(--cp_foreground); }
+
 .lines.prose > .peek_row { margin-top: 0; }
 
 .called_name_row {
@@ -50,21 +94,22 @@
   width: 100%; height: 0; display: flex; justify-content: center; align-items: center; pointer-events: none;
 }
 .called_name_row.of_page {
-  top: -12px; width: 100cqw; height: 30px; margin: -12px 0 6px; align-items: flex-start;
+  /* Pinned flush to the panel's top edge: the offsets cancel the code panel's 20px top padding. */
+  top: -20px; width: 100cqw; height: 30px; margin: -20px 0 14px; align-items: flex-start;
   background: var(--cp_background); pointer-events: auto;
 }
-.called_name_row.of_page .called_name { border-color: var(--cp_border); border-top: 0; border-radius: 0 0 var(--cp_radius) var(--cp_radius); }
+.called_name_row.of_page .called_name { border-color: var(--cp_border); border-top: 0; border-radius: 0 0 var(--cp_radius) var(--cp_radius); background: transparent; }
 .called_name_row.of_page ~ .lines { --called_name_top: 32px; }
 .called_name {
   display: flex; gap: 12px; align-items: baseline; max-width: calc(100% - 24px); padding: 2px 10px; pointer-events: auto;
-  border: 1px solid var(--cp_foreground); border-radius: var(--cp_radius); background: var(--cp_background);
-  font: 600 12px/1.5 var(--cp_mono); overflow-wrap: anywhere;
+  border: 1px solid var(--cp_border); border-radius: var(--cp_radius); background: var(--cp_raised);
+  font: 500 12px/1.5 var(--cp_mono); overflow-wrap: anywhere;
 }
 .called_name .peek_open { font-weight: 400; font-size: 11px; }
 
 .peek {
   position: sticky; left: calc(var(--stage_margin) + 10px); width: calc(100cqw - var(--stage_margin) - 26px);
-  margin: 16px 0 10px 10px; border: 1px solid var(--cp_foreground); border-radius: var(--cp_radius);
+  margin: 16px 0 10px 10px; border: 1px solid var(--cp_border); border-radius: var(--cp_radius); box-shadow: var(--cp_lift);
   cursor: default; background: var(--cp_background);
   font: 12px/1.6 var(--cp_mono);
 }
@@ -74,7 +119,7 @@
 .peek .stage_label { padding-left: 10px; }
 
 .real_code { display: grid; grid-template-columns: auto 1fr; font: 12px/1.55 var(--cp_mono); min-width: max-content; }
-.line_number { padding: 0 10px 0 12px; text-align: right; color: var(--cp_muted); user-select: none; }
+.line_number { padding: 0 10px 0 12px; text-align: right; color: color-mix(in srgb, var(--cp_muted) 70%, transparent); user-select: none; }
 .real_line { white-space: pre; padding-right: 16px; min-height: 1.55em; }
 
 @container (max-width: 560px) {
@@ -90,7 +135,7 @@
 }
 @media (max-width: 600px) {
   .code_header { padding-right: 62px; }
-  .capisce .code_toggle { top: -6px; min-width: 40px; min-height: 36px; padding: 0 9px; font-size: 12.5px; text-align: center; }
+  .capisce .code_toggle { top: -6px; width: 36px; height: 36px; font-size: 11.5px; }
   .lines:not(.prose), .real_code {
     --lines_width: 100cqw;
     min-width: 0; overflow-x: auto; overscroll-behavior-x: contain;
@@ -105,7 +150,7 @@
   }
   .lines:not(.prose) > .stage > .stage_label { margin-top: 7px; padding-top: 6px; padding-bottom: 1px; border-top: 1px solid var(--cp_border); line-height: 17px; }
   .lines.prose > .stage > .stage_label { padding-bottom: 1px; }
-  .stage.selected { background: var(--cp_soft); box-shadow: inset 3px 0 0 var(--cp_foreground); }
+  .stage.selected { background: var(--cp_accent_tint); box-shadow: inset 2px 0 0 var(--cp_accent); }
   .stage.selected > .stage_label { text-decoration: none; }
   .stage.selected > .stage_body { background: none; }
   .lines:not(.prose) > .stage > .stage_label.added, .lines:not(.prose) > .stage > .stage_label.changed, .lines:not(.prose) > .stage > .stage_label.removed { padding-left: 14px; }

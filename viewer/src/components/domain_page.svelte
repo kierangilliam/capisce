@@ -22,14 +22,15 @@
 
 <div class="page">
   <div class="page_title">
+    <div class="page_kicker">Domain</div>
     <div class="page_name">{domain.id}</div>
     <DocText doc={domain.doc} doc_before={domain.diff?.doc_before} class_name="page_doc" focused={focus === "doc"} />
   </div>
 
   {#if flows.length > 0}
-    <div>
-      <div class="panel_label">Flows</div>
-      <div class="flow_cards">
+    <section class="block">
+      <header class="block_head"><span class="panel_label">Flows</span><span class="block_count">{flows.length}</span></header>
+      <div class="cells flow_cards">
         {#each flows as flow (flow.id)}
           <button class="flow_card" data-go={flow.id} onclick={() => go(flow.id)}>
             <span class="domain_name">{flow.id}</span>
@@ -37,41 +38,47 @@
           </button>
         {/each}
       </div>
-    </div>
+    </section>
   {/if}
 
-  <div>
-    <div class="panel_label">Relations</div>
-    {#if domain.frame}
-      <div class="relation"><span class="relation_label">
-          Every other domain sits inside {domain.id}{#if outside.length > 0}, apart from {outside.join(" and ")}{/if}.
-        </span></div>
-    {:else}
-      {#each removed_relations as name}
-        <div class="relation removed" class:focused={focus_relations}><span class="relation_label">{name}</span></div>
-      {/each}
-      {#each outgoing as relation}
-        {@const added = is_new(relation.label, relation.to)}
-        <div class="relation" class:added class:focused={focus_relations && added}>
-          <span class="relation_label">{relation.label}</span>
-          <button class="relation_domain" data-go={domain_page(relation.to)} onclick={() => go(domain_page(relation.to))}>{relation.to}</button>
-        </div>
-      {/each}
-      {#each incoming as relation}
-        <div class="relation">
-          <button class="relation_domain" data-go={domain_page(relation.from)} onclick={() => go(domain_page(relation.from))}>{relation.from}</button>
-          <span class="relation_label">{relation.label}</span>
-        </div>
-      {/each}
-    {/if}
-  </div>
-
-  <div>
-    <div class="panel_label">Models</div>
-    <div class="boxes">
-      {#each domain.models as name}
-        <button class="model_box" data-go={name} onclick={() => go(name)}>{name}</button>
-      {/each}
+  <section class="block">
+    <header class="block_head"><span class="panel_label">Relations</span></header>
+    <div class="relations">
+      {#if domain.frame}
+        <div class="relation"><span class="relation_way" aria-hidden="true">□</span><span class="relation_label">
+            Every other domain sits inside {domain.id}{#if outside.length > 0}, apart from {outside.join(" and ")}{/if}.
+          </span></div>
+      {:else}
+        {#each removed_relations as name}
+          <div class="relation removed" class:focused={focus_relations}><span class="relation_way" aria-hidden="true">→</span><span class="relation_label">{name}</span></div>
+        {/each}
+        {#each outgoing as relation}
+          {@const added = is_new(relation.label, relation.to)}
+          <div class="relation" class:added class:focused={focus_relations && added}>
+            <span class="relation_way" title="From {domain.id}">→</span>
+            <span class="relation_label">{relation.label}</span>
+            <button class="relation_domain" data-go={domain_page(relation.to)} onclick={() => go(domain_page(relation.to))}>{relation.to}</button>
+          </div>
+        {/each}
+        {#each incoming as relation}
+          <div class="relation">
+            <span class="relation_way" title="To {domain.id}">←</span>
+            <button class="relation_domain" data-go={domain_page(relation.from)} onclick={() => go(domain_page(relation.from))}>{relation.from}</button>
+            <span class="relation_label">{relation.label}</span>
+          </div>
+        {/each}
+      {/if}
     </div>
-  </div>
+  </section>
+
+  {#if domain.models.length > 0}
+    <section class="block">
+      <header class="block_head"><span class="panel_label">Models</span><span class="block_count">{domain.models.length}</span></header>
+      <div class="boxes">
+        {#each domain.models as name}
+          <button class="model_box" data-go={name} onclick={() => go(name)}>{name}</button>
+        {/each}
+      </div>
+    </section>
+  {/if}
 </div>

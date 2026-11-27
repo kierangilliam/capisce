@@ -6,8 +6,7 @@ const FADE_MS = 400;
 export function start_quickstart(): void {
   const prompt = document.querySelector<HTMLElement>(".quickstart_prompt");
   const variable = document.querySelector<HTMLElement>(".quickstart_variable");
-  const copy_label = document.querySelector<HTMLElement>(".quickstart_copy");
-  if (prompt === null || variable === null || copy_label === null) {
+  if (prompt === null || variable === null) {
     return;
   }
 
@@ -63,28 +62,38 @@ export function start_quickstart(): void {
   });
   /** Clicking the variable edits it rather than copying. */
   variable.addEventListener("click", (event) => event.stopPropagation());
+}
 
-  let reset: number | undefined;
-  const copy = async () => {
-    const text = (prompt.querySelector("code")?.textContent ?? "").replace(/\s+/g, " ").trim();
-    try {
-      await navigator.clipboard.writeText(text);
-      copy_label.textContent = "Copied";
-    } catch {
-      copy_label.textContent = "Couldn’t copy";
+/** Every copy block (the quickstart prompt, the install command) copies its code, whitespace collapsed, on a click
+ * or on Enter or Space, and says so in its corner label for a moment. */
+export function start_copy_blocks(): void {
+  for (const block of document.querySelectorAll<HTMLElement>(".copy_block")) {
+    const label = block.querySelector<HTMLElement>(".copy_label");
+    if (label === null) {
+      continue;
     }
-    prompt.classList.add("copied");
-    window.clearTimeout(reset);
-    reset = window.setTimeout(() => {
-      copy_label.textContent = "Copy";
-      prompt.classList.remove("copied");
-    }, 1600);
-  };
-  prompt.addEventListener("click", () => void copy());
-  prompt.addEventListener("keydown", (event) => {
-    if (event.target === prompt && (event.key === "Enter" || event.key === " ")) {
-      event.preventDefault();
-      void copy();
-    }
-  });
+    let reset: number | undefined;
+    const copy = async () => {
+      const text = (block.querySelector("code")?.textContent ?? "").replace(/\s+/g, " ").trim();
+      try {
+        await navigator.clipboard.writeText(text);
+        label.textContent = "Copied";
+      } catch {
+        label.textContent = "Couldn’t copy";
+      }
+      block.classList.add("copied");
+      window.clearTimeout(reset);
+      reset = window.setTimeout(() => {
+        label.textContent = "Copy";
+        block.classList.remove("copied");
+      }, 1600);
+    };
+    block.addEventListener("click", () => void copy());
+    block.addEventListener("keydown", (event) => {
+      if (event.target === block && (event.key === "Enter" || event.key === " ")) {
+        event.preventDefault();
+        void copy();
+      }
+    });
+  }
 }

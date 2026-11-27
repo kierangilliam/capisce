@@ -3,7 +3,7 @@ import type { TraceFonts } from "../map/trace_layout";
 
 const DEFAULT_SANS = 'system-ui, -apple-system, "Segoe UI", sans-serif';
 const DEFAULT_MONO = 'ui-monospace, "SF Mono", Menlo, Consolas, monospace';
-const LABEL_FONT_SIZE = 11.5;
+const LABEL_FONT_SIZE = 12;
 const MONO_FONT_SIZE = 10.5;
 const SELECTED_WEIGHT = 600;
 

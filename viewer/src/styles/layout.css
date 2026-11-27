@@ -1,12 +1,13 @@
 .bar {
   display: flex; align-items: center; gap: 6px;
-  padding: 6px 8px; border-bottom: 1px solid var(--cp_border);
-  min-height: 38px;
+  padding: 0 10px; border-bottom: 1px solid var(--cp_border);
+  min-height: 44px;
 }
-.crumbs { flex: 1; min-width: 0; display: flex; gap: 4px; overflow: hidden; white-space: nowrap; font: 12px var(--cp_mono); }
+/* Breadcrumbs read as a path: plain words, slashes between, the last one bright. */
+.crumbs { flex: 1; min-width: 0; display: flex; gap: 8px; margin-left: 6px; overflow: hidden; white-space: nowrap; font: 13px var(--cp_sans); }
 .capisce .crumb { color: var(--cp_muted); overflow: hidden; text-overflow: ellipsis; flex-shrink: 1; font: inherit; }
-.capisce .crumb:last-child { color: var(--cp_foreground); font-weight: 600; flex-shrink: 0; max-width: 100%; }
-.crumb:not(:last-child)::after { content: " ›"; }
+.capisce .crumb:last-child { color: var(--cp_foreground); flex-shrink: 0; max-width: 100%; }
+.crumb:not(:last-child)::after { content: "/"; margin-left: 8px; color: var(--cp_edge); }
 .capisce .crumb:not(:last-child):hover { color: var(--cp_foreground); }
 
 .bar_host { position: relative; }
@@ -20,23 +21,29 @@
   background: var(--cp_background); border-right: 1px solid var(--cp_border);
   padding: 8px 0; display: none;
 }
-.capisce.menu_open .browse { display: block; box-shadow: 4px 0 0 color-mix(in srgb, var(--cp_border) 50%, transparent); }
+.capisce.menu_open .browse { display: block; box-shadow: var(--cp_lift); }
 .trace_panel {
-  border-right: 1px solid var(--cp_border); padding: 12px 12px 24px; min-width: 232px;
-  /* A sheet of drafting paper: a fine grain, so the diagram reads as a different surface from the code. */
-  background: var(--cp_sheet_grain) repeat 0 0 / 320px 320px local, var(--cp_sheet);
+  border-right: 1px solid var(--cp_border); padding: 14px 14px 24px; min-width: 232px;
+  /* The diagram's swimlanes carry its background, so the panel itself is plain. */
+  background: var(--cp_background);
 }
-.code_panel { padding: 12px 0 40px; container-type: inline-size; }
+.code_panel { padding: 20px 0 40px; container-type: inline-size; }
 
-.group_title { padding: 10px 12px 4px; }
-.capisce .browse_item { display: flex; gap: 8px; width: 100%; padding: 3px 12px; font: 11.5px/1.5 var(--cp_mono); }
-.browse_item:hover { background: var(--cp_soft); }
-.capisce .browse_item.current { background: var(--cp_foreground); color: var(--cp_background); }
+/* The sidebar, as in a console: small capital group names, items in plain type, the current one tinted. */
+.browse_list { padding: 0 8px; }
+.group_title { padding: 16px 8px 6px; }
+.capisce .browse_item {
+  display: flex; gap: 8px; width: 100%; padding: 5px 8px; border-radius: var(--cp_radius);
+  font: 13px/1.4 var(--cp_sans); color: var(--cp_foreground);
+}
+.capisce .browse_item:has(.method), .capisce .browse_module .browse_item { font: 12px/1.45 var(--cp_mono); }
+.browse_item:hover { background: var(--cp_raised); }
+.capisce .browse_item.current { background: var(--cp_accent_wash); color: var(--cp_accent); }
 .browse_item.current .method { color: inherit; }
 .capisce .browse_item.unmapped:not(.current) { color: var(--cp_muted); }
 .browse_item.changed_item .browse_name::after { content: " ●"; font-size: 8px; vertical-align: middle; }
 .browse_item.removed_item .browse_name { text-decoration: line-through; }
-.method { flex: 0 0 44px; color: var(--cp_muted); }
+.method { flex: 0 0 46px; color: var(--cp_muted); font-size: 10px; letter-spacing: 0.06em; line-height: 17.5px; }
 .browse_name { overflow-wrap: anywhere; }
 .browse_time { margin-left: auto; padding-left: 8px; white-space: nowrap; color: var(--cp_muted); }
 .browse_item.current .browse_time { color: inherit; }
@@ -44,15 +51,22 @@
   display: block; width: 0; min-width: 100%; margin: 0 0 10px; font: 11.5px/1.5 var(--cp_sans);
   color: var(--cp_muted); text-decoration: none;
 }
-.timing_line b { font-weight: 600; color: var(--cp_foreground); }
+.timing_line b { font: 600 11px var(--cp_mono); color: var(--cp_foreground); }
 a.timing_line:hover { text-decoration: underline; text-underline-offset: 2px; }
-.code_panel > .timing_line { padding: 0 14px; }
-.capisce .browse_home { display: block; padding: 2px 12px 6px; font-size: 12px; color: var(--cp_muted); }
+.code_panel > .timing_line { padding: 0 20px; }
+.capisce .browse_home { display: block; padding: 8px 8px 4px; font: var(--cp_label); letter-spacing: var(--cp_label_spacing); text-transform: uppercase; color: var(--cp_muted); }
 .capisce .browse_home:hover { color: var(--cp_foreground); }
-.capisce .browse_title { display: block; padding: 0 12px; font-weight: 600; font-size: 14px; }
-.browse_module summary { padding: 3px 12px; font: 11.5px/1.5 var(--cp_mono); cursor: pointer; }
-.browse_module summary:hover { background: var(--cp_soft); }
-.capisce .browse_module .browse_item { padding-left: 26px; }
+.capisce .browse_title { display: block; padding: 2px 8px 2px; font-weight: 600; font-size: 15px; letter-spacing: -0.01em; }
+.browse_module summary { padding: 5px 8px; border-radius: var(--cp_radius); font: 12px/1.45 var(--cp_mono); cursor: pointer; }
+.browse_module summary:hover { background: var(--cp_raised); }
+.browse_module summary { list-style: none; display: flex; align-items: baseline; gap: 6px; }
+.browse_module summary::-webkit-details-marker { display: none; }
+.browse_module summary::before { content: "›"; width: 8px; color: var(--cp_muted); transition: transform 120ms var(--cp_ease); }
+.browse_module[open] > summary::before { transform: rotate(90deg); }
+/* A module's functions hang off a guide line, as nested items do in a docs sidebar. */
+.browse_module[open] { margin-bottom: 4px; }
+.capisce .browse_module .browse_item { width: calc(100% - 13px); margin-left: 13px; padding-left: 12px; border-radius: 0 var(--cp_radius) var(--cp_radius) 0; box-shadow: inset 1px 0 0 var(--cp_border); }
+.capisce .browse_module .browse_item.current { box-shadow: inset 1.5px 0 0 var(--cp_accent); }
 .counts { color: var(--cp_muted); }
 
 @media (min-width: 601px) {
@@ -75,15 +89,15 @@ a.timing_line:hover { text-decoration: underline; text-underline-offset: 2px; }
     border-right: 0; border-bottom: 1px solid var(--cp_border); max-height: min(340px, 60vh);
     overscroll-behavior-x: contain;
     background:
-      linear-gradient(to right, var(--cp_sheet) 40%, transparent) left center / 26px 100% no-repeat local,
-      linear-gradient(to left, var(--cp_sheet) 40%, transparent) right center / 26px 100% no-repeat local,
+      linear-gradient(to right, var(--cp_background) 40%, transparent) left center / 26px 100% no-repeat local,
+      linear-gradient(to left, var(--cp_background) 40%, transparent) right center / 26px 100% no-repeat local,
       var(--cp_more_left), var(--cp_more_right),
-      var(--cp_sheet_grain) repeat 0 0 / 320px 320px local, var(--cp_sheet);
+      var(--cp_background);
   }
-  .browse { bottom: auto; width: 100%; max-width: none; max-height: min(70vh, 560px); border-right: 0; border-bottom: 1px solid var(--cp_foreground); padding-bottom: 14px; }
-  .capisce.menu_open .browse { box-shadow: 0 4px 0 color-mix(in srgb, var(--cp_border) 50%, transparent); }
-  .capisce .browse_item, .browse_module summary { padding-top: 9px; padding-bottom: 9px; font-size: 12px; }
-  .capisce .browse_home { padding: 8px 12px; }
+  .browse { bottom: auto; width: 100%; max-width: none; max-height: min(70vh, 560px); border-right: 0; border-bottom: 1px solid var(--cp_border); padding-bottom: 14px; }
+  .capisce.menu_open .browse { box-shadow: var(--cp_lift); }
+  .capisce .browse_item, .browse_module summary { padding-top: 9px; padding-bottom: 9px; }
+  .capisce .browse_home { padding: 10px 8px; }
   .bar { flex-wrap: wrap; padding: 8px 10px 4px; }
   .crumbs { order: 9; flex-basis: 100%; }
   .capisce .crumb { padding: 9px 0; min-width: 2ch; }

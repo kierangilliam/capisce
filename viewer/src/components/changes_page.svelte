@@ -11,6 +11,7 @@
 
 <div class="page">
   <div class="page_title">
+    <div class="page_kicker">{changes.head} → {changes.base}</div>
     <div class="page_name">Changes</div>
     <p class="page_doc">What {changes.head} changes, compared with {changes.base}. Click a part to see it.</p>
     {#if changes.needs_review}

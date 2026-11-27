@@ -1,67 +1,127 @@
-.page { padding: 0 16px; display: flex; flex-direction: column; gap: 18px; }
-.page_name { font-size: 20px; font-weight: 600; line-height: 1.25; }
-.code_header .page_name { margin-bottom: 2px; }
-.page_doc { margin: 4px 0 0; max-width: 68ch; color: var(--cp_muted); }
+.page { padding: 0 20px; display: flex; flex-direction: column; gap: 28px; }
+/* A page's name is large and light, the way a console names the thing you are looking at; its doc follows in grey. */
+.page_name { font-size: 24px; font-weight: 500; line-height: 1.2; letter-spacing: -0.02em; }
+.code_header .page_name { margin-bottom: 4px; }
+.page_doc { margin: 6px 0 0; max-width: 68ch; font-size: 13.5px; line-height: 1.5; color: var(--cp_muted); }
 .page_doc code { font: 12px var(--cp_mono); }
 
-.canvas { position: relative; }
-.canvas svg { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
-.edge_line { stroke: var(--cp_foreground); stroke-width: 1; fill: none; }
-.edge_head { fill: var(--cp_foreground); }
-.edge_label {
-  font: 10.5px var(--cp_sans); fill: var(--cp_muted); text-anchor: middle; dominant-baseline: middle;
-  paint-order: stroke; stroke: var(--cp_background); stroke-width: 6px; stroke-linejoin: round;
+/* The domain canvas is a sheet: paper with a sparse dot grid, a hairline edge and a small diamond at each corner.
+   The diagram is drawn in neutral ink; the accent appears only on the box the pointer is on. */
+.canvas {
+  position: relative; flex-shrink: 0; margin: 4px;
+  background: var(--cp_grid), var(--cp_paper);
+  border: 1px solid var(--cp_border);
 }
-.canvas_frame { position: absolute; border: 1px solid var(--cp_foreground); border-radius: 10px; }
-.capisce .frame_label { position: absolute; display: flex; gap: 10px; align-items: baseline; padding: 0 6px; background: var(--cp_background); }
-.frame_label:hover .frame_name { text-decoration: underline; text-underline-offset: 2px; }
-.frame_name { font-weight: 600; }
+.canvas_corner {
+  position: absolute; width: 7px; height: 7px; border: 1px solid var(--cp_edge); background: var(--cp_background);
+  transform: translate(-50%, -50%) rotate(45deg); pointer-events: none;
+}
+.canvas svg { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+.canvas_zone { position: absolute; font: 9.5px/1 var(--cp_mono); color: var(--cp_muted); opacity: 0.7; pointer-events: none; }
+.column_zone { bottom: 3px; transform: translateX(-50%); }
+.row_zone { right: 4px; transform: translateY(-50%); }
+.edge_line { stroke: var(--cp_ink); stroke-width: 1; fill: none; }
+.edge_head { fill: var(--cp_ink); }
+.edge_label {
+  font: 10px var(--cp_mono); fill: var(--cp_muted); text-anchor: middle; dominant-baseline: middle;
+  paint-order: stroke; stroke: var(--cp_paper); stroke-width: 9px; stroke-linejoin: round;
+}
+.canvas_frame { position: absolute; border: 1px dashed var(--cp_edge); }
+.capisce .frame_label {
+  position: absolute; display: flex; gap: 10px; align-items: baseline; padding: 0 6px; background: var(--cp_paper);
+}
+.frame_label:hover .frame_name { color: var(--cp_accent); }
+.frame_name { font: 500 10.5px var(--cp_mono); letter-spacing: var(--cp_label_spacing); text-transform: uppercase; color: var(--cp_foreground); }
 .frame_tag { font-size: 11.5px; color: var(--cp_muted); }
+
 .capisce .domain_box {
-  position: absolute; display: flex; flex-direction: column; justify-content: center; gap: 2px;
-  padding: 6px 10px; border: 1px solid var(--cp_foreground); border-radius: var(--cp_radius);
-  background: var(--cp_background); overflow: hidden;
+  position: absolute; display: flex; flex-direction: column; justify-content: center; gap: 3px;
+  padding: 6px 12px; border: 1px solid var(--cp_ink); background: var(--cp_background); overflow: hidden;
+  transition: border-color 120ms var(--cp_ease);
 }
 .capisce .domain_box.with_count { overflow: visible; }
-.capisce .domain_box:hover, .capisce .model_box:hover, .capisce .flow_card:hover { background: var(--cp_foreground); color: var(--cp_background); }
-.domain_box:hover .domain_tag, .flow_card:hover .domain_tag { color: inherit; }
-.domain_name { font-weight: 600; line-height: 1.2; }
-.domain_tag { font-size: 11px; line-height: 1.25; color: var(--cp_muted); }
+/* Hover and focus: the box takes the accent and shows corner registration marks, rather than filling in. */
+.capisce :is(.flow_card, .model_box) { position: relative; }
+.capisce :is(.domain_box, .flow_card)::before {
+  content: ""; position: absolute; inset: 3px; pointer-events: none; background: var(--cp_corners); opacity: 0;
+  transition: opacity 120ms var(--cp_ease);
+}
+.capisce :is(.domain_box, .flow_card):is(:hover, :focus-visible)::before { opacity: 1; }
+.capisce .domain_box:is(:hover, :focus-visible) { border-color: var(--cp_accent); outline: none; }
+.capisce .domain_box:is(:hover, :focus-visible) .domain_name { color: var(--cp_accent); }
+.domain_name { font-weight: 600; line-height: 1.25; }
+.domain_tag { font-size: 11.5px; line-height: 1.3; color: var(--cp_muted); }
 .domain_count {
   position: absolute; top: -9px; right: -9px; min-width: 20px; padding: 0 5px; border-radius: 10px;
-  background: var(--cp_foreground); color: var(--cp_background); font: 600 11px/20px var(--cp_mono); text-align: center;
+  background: var(--cp_accent); color: var(--cp_background); font: 600 10.5px/20px var(--cp_mono); text-align: center;
 }
 
-.boxes { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
-.flow_cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 8px; margin-top: 8px; max-width: 980px; }
-.capisce .flow_card { display: flex; flex-direction: column; gap: 3px; padding: 8px 10px; border: 1px solid var(--cp_foreground); border-radius: var(--cp_radius); }
-.capisce .model_box { border: 1px solid var(--cp_foreground); border-radius: var(--cp_radius); padding: 4px 10px; font: 600 12px var(--cp_mono); }
-.relation { display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; padding: 2px 0; }
-.relation_label { color: var(--cp_muted); }
-.capisce .relation_domain { font-weight: 600; text-decoration: underline; text-underline-offset: 2px; }
+/* A section of a page is a panel: a header row with its name and count, then its content, all on hairlines. */
+.block { max-width: 980px; border: 1px solid var(--cp_border); border-radius: var(--cp_radius); overflow: hidden; }
+.block_head {
+  display: flex; align-items: center; gap: 8px; padding: 8px 14px;
+  background: var(--cp_raised); border-bottom: 1px solid var(--cp_border);
+}
+.block_count { margin-left: auto; font: 500 10.5px var(--cp_mono); color: var(--cp_muted); }
 
-.change { display: flex; flex-direction: column; gap: 4px; padding: 8px 0; border-top: 1px solid var(--cp_border); max-width: 900px; }
+/* Cells, not cards: the panel is divided by shared hairlines, each cell a target. */
+.cells { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); margin: 0 -1px -1px 0; }
+.capisce .flow_card {
+  display: flex; flex-direction: column; gap: 4px; padding: 14px 16px 16px; min-height: 92px;
+  border-right: 1px solid var(--cp_border); border-bottom: 1px solid var(--cp_border); background: var(--cp_background);
+  transition: background-color 120ms var(--cp_ease);
+}
+.capisce .flow_card .domain_name { font-weight: 500; font-size: 13.5px; }
+.capisce .flow_card .domain_tag { font-size: 12.5px; line-height: 1.45; }
+.capisce .flow_card:is(:hover, :focus-visible) { background: var(--cp_raised); outline: none; }
+.capisce .flow_card:is(:hover, :focus-visible) .domain_name { color: var(--cp_accent); }
+
+/* Relations read as a table: a direction, the verb in grey, the other domain as a link. */
+.relations { display: flex; flex-direction: column; }
+.relation { display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; padding: 9px 14px; border-bottom: 1px solid var(--cp_border); }
+.relation:last-child { border-bottom: 0; }
+.relation_way { flex: 0 0 20px; font: 14px/1 var(--cp_mono); color: var(--cp_muted); }
+.relation_label { color: var(--cp_muted); }
+.capisce .relation_domain { font-weight: 500; color: var(--cp_foreground); text-decoration: underline; text-decoration-color: var(--cp_edge); text-underline-offset: 3px; }
+.capisce .relation_domain:hover { color: var(--cp_accent); text-decoration-color: currentColor; }
+
+/* Models are named things, so they are badges: mono, tinted, small. */
+.boxes { display: flex; flex-wrap: wrap; gap: 6px; padding: 12px 14px; }
+.capisce .model_box {
+  padding: 3px 8px; border: 1px solid var(--cp_border); border-radius: var(--cp_radius); background: var(--cp_raised);
+  font: 500 12px var(--cp_mono); transition: border-color 120ms var(--cp_ease), color 120ms var(--cp_ease);
+}
+.capisce .model_box:is(:hover, :focus-visible) { border-color: var(--cp_accent_edge); background: var(--cp_accent_wash); color: var(--cp_accent); outline: none; }
+
+.change_group {
+  max-width: 900px; padding: 8px 0; border-bottom: 1px solid var(--cp_border);
+  font: var(--cp_label); letter-spacing: var(--cp_label_spacing); text-transform: uppercase; color: var(--cp_muted);
+}
+.change { display: flex; flex-direction: column; gap: 8px; padding: 12px 0; border-bottom: 1px solid var(--cp_border); max-width: 900px; }
 .change_head { display: flex; gap: 10px; align-items: baseline; flex-wrap: wrap; }
-.capisce .change_name { font: 600 12.5px var(--cp_mono); overflow-wrap: anywhere; }
-.change_name:hover { text-decoration: underline; text-underline-offset: 2px; }
-.change_status { font-size: 11px; color: var(--cp_muted); }
+.capisce .change_name { font: 500 12.5px var(--cp_mono); overflow-wrap: anywhere; }
+.change_name:hover { color: var(--cp_accent); }
+.change_status { font-size: 11.5px; color: var(--cp_muted); }
 .change_parts { display: flex; gap: 6px; flex-wrap: wrap; }
-.capisce .chip { border: 1px solid var(--cp_border); border-radius: 999px; padding: 1px 9px; font-size: 12px; background: none; }
-.capisce .chip:hover { border-color: var(--cp_foreground); background: var(--cp_foreground); color: var(--cp_background); }
-.capisce .chip.added { border-color: var(--cp_added); }
-.capisce .chip.removed { border-color: var(--cp_removed); text-decoration: none; color: inherit; }
-.capisce .chip.warning { border-style: dashed; border-color: var(--cp_foreground); }
-.change_group { font-weight: 600; font-size: 14px; margin-top: 10px; }
+.capisce .chip {
+  border: 1px solid var(--cp_border); border-radius: var(--cp_radius); padding: 2px 8px; background: var(--cp_raised);
+  font: 500 10.5px/1.5 var(--cp_mono); letter-spacing: 0.04em; text-transform: uppercase;
+}
+.capisce .chip:hover { border-color: var(--cp_accent_edge); background: var(--cp_accent_wash); color: var(--cp_accent); }
+.capisce .chip.added { border-color: color-mix(in srgb, var(--cp_added) 45%, transparent); background: color-mix(in srgb, var(--cp_added) 9%, transparent); color: var(--cp_added); }
+.capisce .chip.removed { border-color: color-mix(in srgb, var(--cp_removed) 40%, transparent); background: color-mix(in srgb, var(--cp_removed) 8%, transparent); color: var(--cp_removed); text-decoration: none; }
+.capisce .chip.warning { border-style: dashed; border-color: var(--cp_edge); }
 .empty_page { margin: auto; padding: 24px; max-width: 46ch; text-align: center; color: var(--cp_muted); }
 
 @media (max-width: 600px) {
-  .page { padding: 0 14px; }
+  .page { padding: 0 14px; gap: 22px; }
   .page.canvas_page { width: max-content; min-width: 100%; }
   .page.canvas_page > :not(.canvas) { position: sticky; left: 14px; width: calc(100cqw - 28px); }
-  .capisce .flow_card { padding: 10px 12px; }
-  .capisce .model_box { padding: 9px 12px; }
-  .relation { padding: 7px 0; }
-  .capisce .chip { padding: 7px 12px; }
+  .cells { grid-template-columns: 1fr; }
+  .capisce .flow_card { min-height: 0; padding: 12px 14px; }
+  .capisce .model_box { padding: 8px 10px; }
+  .relation { padding: 11px 14px; }
+  .capisce .chip { padding: 7px 10px; }
   .change_parts { gap: 8px; }
   .capisce .change_name { padding: 6px 0; }
 }

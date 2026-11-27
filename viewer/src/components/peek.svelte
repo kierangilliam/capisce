@@ -17,7 +17,11 @@
     </div>
   </div>
   <div class="peek_scroll">
-    <div class="peek_doc">{target.doc}</div>
+    {#if target.doc !== ""}
+      <div class="peek_doc">{target.doc}</div>
+    {:else if target.pseudo.length === 0}
+      <div class="peek_doc">No pseudo-code yet.</div>
+    {/if}
     {#if target.pseudo.length > 0}
       <StageLines symbol={target} />
     {/if}

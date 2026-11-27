@@ -11,11 +11,20 @@
 
 <div class="page canvas_page">
   <div>
-    <div class="panel_label">{project_name()}</div>
+    <div class="page_kicker">{project_name()}</div>
     <div class="page_name">Domains</div>
     <p class="page_doc">What {subject} is made of, and how the parts relate. Click a domain to see its flows, models, endpoints and functions.</p>
   </div>
   <div class="canvas" style:width="{layout.width}px" style:height="{layout.height}px">
+    {#each ["0 0", "100% 0", "0 100%", "100% 100%"] as corner}
+      <span class="canvas_corner" style:left={corner.split(" ")[0]} style:top={corner.split(" ")[1]} aria-hidden="true"></span>
+    {/each}
+    {#each layout.columns as zone}
+      <span class="canvas_zone column_zone" style:left="{zone.at}px" aria-hidden="true">{zone.label}</span>
+    {/each}
+    {#each layout.rows as zone}
+      <span class="canvas_zone row_zone" style:top="{zone.at}px" aria-hidden="true">{zone.label}</span>
+    {/each}
     {#if frame !== undefined}
       <div
         class="canvas_frame"

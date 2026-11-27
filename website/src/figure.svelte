@@ -163,9 +163,9 @@
   .stage {
     position: relative;
     overflow: hidden;
-    border: 1px solid #d4d4d4;
-    border-radius: 4px;
-    background: #ffffff;
+    border: 1px solid #d6deea;
+    border-radius: 3px;
+    background: #f8fafc;
   }
   .stage_inner {
     position: absolute;

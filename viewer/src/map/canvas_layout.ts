@@ -3,12 +3,16 @@ import type { Domain } from "../types";
 export type CanvasPoint = { x: number; y: number };
 export type CanvasEdge = { from: CanvasPoint; to: CanvasPoint; head: string; label: string; middle: CanvasPoint };
 export type CanvasBox = { domain: Domain; x: number; y: number };
+/** A zone marker on the sheet's edge, as on a drawing: a letter under each column, a number beside each row. */
+export type CanvasZone = { label: string; at: number };
 export type CanvasLayout = {
   width: number;
   height: number;
   frame: { left: number; top: number; width: number; height: number };
   boxes: CanvasBox[];
   edges: CanvasEdge[];
+  columns: CanvasZone[];
+  rows: CanvasZone[];
 };
 
 export const BOX = { width: 168, height: 62 };
@@ -97,5 +101,13 @@ export function canvas_layout(domains: Domain[]): CanvasLayout {
     frame,
     boxes: placed.map((domain) => ({ domain, ...box_corner(domain) })),
     edges,
+    columns: Array.from({ length: columns }, (_, column) => ({
+      label: String.fromCharCode(65 + (column % 26)),
+      at: FRAME.left + FRAME.pad_x + column * CELL.width + BOX.width / 2,
+    })),
+    rows: Array.from({ length: rows }, (_, row) => ({
+      label: String(row + 1),
+      at: FRAME.top + FRAME.pad_top + row * CELL.height + BOX.height / 2,
+    })),
   };
 }

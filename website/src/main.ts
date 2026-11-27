@@ -1,6 +1,6 @@
 import { mount } from "svelte";
 import { start_code_symbols } from "./code_symbols";
-import { start_quickstart } from "./quickstart";
+import { start_copy_blocks, start_quickstart } from "./quickstart";
 import Figure from "./figure.svelte";
 import { SCENARIOS } from "./scenarios";
 import "./site.css";
@@ -16,6 +16,7 @@ for (const figure of document.querySelectorAll<HTMLElement>("[data-figure]")) {
 
 start_code_symbols();
 start_quickstart();
+start_copy_blocks();
 
 const first_capisce = document.querySelector("#first_capisce");
 const repo_link = document.querySelector(".repo_link");

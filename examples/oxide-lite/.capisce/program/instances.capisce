@@ -268,6 +268,46 @@ def instance_set_state(
     instance.failure_reason = failure_reason
     return instance
 
+=== instance_store.instance_insert
+kind: def
+src: api/src/db/instance_store.rs :: pub fn instance_insert(
+doc: Saves a new instance exactly as the caller built it, with its id, sizes, address and first state.
+---
+def instance_insert(instance):
+    save instance
+
+=== instance_store.instance_by_id
+kind: def
+src: api/src/db/instance_store.rs :: pub fn instance_by_id(
+doc: Finds an instance by id, in any project. Callers check the project themselves.
+---
+def instance_by_id(instance_id):
+    return the Instance with this id, or None
+
+=== instance_store.instance_by_name
+kind: def
+src: api/src/db/instance_store.rs :: pub fn instance_by_name(
+doc: Finds an instance by name within one project. Two projects may each have an instance of the same name.
+---
+def instance_by_name(project_id, name):
+    return the project's Instance with this name, or None
+
+=== instance_store.instances_in_project
+kind: def
+src: api/src/db/instance_store.rs :: pub fn instances_in_project(
+doc: Every instance in a project, in any state, in order of name.
+---
+def instances_in_project(project_id):
+    return the project's Instances, sorted by name
+
+=== instance_store.instance_delete
+kind: def
+src: api/src/db/instance_store.rs :: pub fn instance_delete(
+doc: Deletes an instance's record. Its disks and address are the caller's to deal with first.
+---
+def instance_delete(instance_id):
+    delete the Instance with this id, if any
+
 === Creating an instance from the console
 kind: flow
 domain: Instances

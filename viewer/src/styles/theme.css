@@ -1,10 +1,11 @@
 :root {
-  --fallback_background: #ffffff;
-  --fallback_foreground: #111111;
-  --fallback_muted: #6f6f6f;
-  --fallback_border: #d4d4d4;
-  --fallback_soft: #f3f3f3;
-  --fallback_module: #1d4ed8;
+  /* Blueprint: one blue-grey family on a cool paper, shared with the site. */
+  --fallback_background: #f8fafc;
+  --fallback_foreground: #13203a;
+  --fallback_muted: #5f6b80;
+  --fallback_border: #d6deea;
+  --fallback_soft: #edf1f7;
+  --fallback_module: #2457d6;
   --cp_background: var(--background, var(--fallback_background));
   --cp_foreground: var(--foreground, var(--fallback_foreground));
   --cp_muted: var(--muted-foreground, var(--fallback_muted));
@@ -16,29 +17,59 @@
   --cp_removed: var(--destructive, #dc2626);
   --cp_mono: var(--font-mono, ui-monospace, "SF Mono", Menlo, Consolas, monospace);
   --cp_sans: var(--font-sans, system-ui, -apple-system, "Segoe UI", sans-serif);
-  --cp_radius: 4px;
+  /* Shape lock: diagram shapes are square; panels, controls and badges get a 3px radius; only markers are round. */
+  --cp_radius: 3px;
+  /* Labels in the instrument voice: small mono capitals, spaced. They name things; they are never the content. */
+  --cp_label: 500 10.5px/1.4 var(--cp_mono);
+  --cp_label_spacing: 0.08em;
+  /* One accent, spent only where something is active: the picked row, the pressed button, the current page. */
+  --cp_accent: var(--cp_module);
+  --cp_accent_wash: color-mix(in srgb, var(--cp_accent) 8%, transparent);
+  /* A fainter tint for large picked areas (a stage of code, a row of the trace), so the text on them keeps its contrast. */
+  --cp_accent_tint: color-mix(in srgb, var(--cp_accent) 4%, transparent);
+  --cp_accent_edge: color-mix(in srgb, var(--cp_accent) 40%, transparent);
+  /* Everything else is neutral. Diagrams are drawn in ink, a softened foreground, on paper a shade off the page. */
+  --cp_ink: color-mix(in srgb, var(--cp_foreground) 72%, var(--cp_background));
+  --cp_line: color-mix(in srgb, var(--cp_foreground) 13%, var(--cp_background));
+  --cp_raised: color-mix(in srgb, var(--cp_foreground) 3.5%, var(--cp_background));
+  --cp_paper: color-mix(in srgb, var(--cp_foreground) 2%, var(--cp_background));
+  --cp_grid: radial-gradient(circle at 1px 1px, color-mix(in srgb, var(--cp_foreground) 8%, transparent) 0.9px, transparent 1.1px) 0 0 / 20px 20px local;
+  /* The edge of anything that floats over the page, a step stronger than a rule. */
+  --cp_edge: color-mix(in srgb, var(--cp_foreground) 24%, var(--cp_background));
+  /* The one elevation: a hairline and a soft, short shadow. */
+  --cp_lift: 0 1px 2px color-mix(in srgb, var(--cp_foreground) 6%, transparent), 0 12px 32px -16px color-mix(in srgb, var(--cp_foreground) 30%, transparent);
+  --cp_ease: cubic-bezier(0.23, 1, 0.32, 1);
   --cp_pane_width: 300px;
-  --cp_sheet: color-mix(in srgb, #8c7e5a 4%, var(--cp_background));
-  --cp_sheet_grain: url("data:image/svg+xml,%3Csvg%20xmlns%3D'http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg'%20width%3D'320'%20height%3D'320'%3E%3Cfilter%20id%3D'g'%20x%3D'0'%20y%3D'0'%20width%3D'100%25'%20height%3D'100%25'%3E%3CfeTurbulence%20type%3D'fractalNoise'%20baseFrequency%3D'0.85'%20numOctaves%3D'3'%20seed%3D'7'%20stitchTiles%3D'stitch'%2F%3E%3CfeColorMatrix%20values%3D'0%200%200%200%200.25%20%200%200%200%200%200.27%20%200%200%200%200%200.32%20%200.9%200.9%200.9%200%20-0.95'%2F%3E%3C%2Ffilter%3E%3Cfilter%20id%3D'm'%20x%3D'0'%20y%3D'0'%20width%3D'100%25'%20height%3D'100%25'%3E%3CfeTurbulence%20type%3D'fractalNoise'%20baseFrequency%3D'0.0125'%20numOctaves%3D'3'%20seed%3D'3'%20stitchTiles%3D'stitch'%2F%3E%3CfeColorMatrix%20values%3D'0%200%200%200%200.3%20%200%200%200%200%200.36%20%200%200%200%200%200.45%20%200%200%200%201.6%20-0.6'%2F%3E%3C%2Ffilter%3E%3Crect%20width%3D'320'%20height%3D'320'%20filter%3D'url(%23m)'%20opacity%3D'0.07'%2F%3E%3Crect%20width%3D'320'%20height%3D'320'%20filter%3D'url(%23g)'%20opacity%3D'0.2'%2F%3E%3C%2Fsvg%3E");
+  /* Corner registration marks show what the pointer is on: four short L's inside a box, in the accent. */
+  --cp_tick: linear-gradient(var(--cp_accent), var(--cp_accent));
+  --cp_corners:
+    var(--cp_tick) top left / 6px 1.5px no-repeat, var(--cp_tick) top left / 1.5px 6px no-repeat,
+    var(--cp_tick) top right / 6px 1.5px no-repeat, var(--cp_tick) top right / 1.5px 6px no-repeat,
+    var(--cp_tick) bottom left / 6px 1.5px no-repeat, var(--cp_tick) bottom left / 1.5px 6px no-repeat,
+    var(--cp_tick) bottom right / 6px 1.5px no-repeat, var(--cp_tick) bottom right / 1.5px 6px no-repeat;
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
-    --fallback_background: #121212;
-    --fallback_foreground: #ededed;
-    --fallback_muted: #9a9a9a;
-    --fallback_border: #3a3a3a;
-    --fallback_soft: #1e1e1e;
-    --fallback_module: #8ab4ff;
+    --fallback_background: #0d1320;
+    --fallback_foreground: #e6ebf3;
+    --fallback_muted: #8e99ad;
+    --fallback_border: #26304a;
+    --fallback_soft: #151d2d;
+    --fallback_module: #7ea4ff;
     color-scheme: dark;
   }
+  :root:not([data-theme="light"]) .real_code { --hl_keyword: #e879c9; --hl_string: #6fd39a; --hl_type: #5fd0e4; --hl_call: #8fb2ff; --hl_number: #f5b070;
+  --hl_comment: #8593a8; --hl_macro: #b99cff; --hl_constant: #f5b070; }
 }
+:root[data-theme="dark"] .real_code { --hl_keyword: #e879c9; --hl_string: #6fd39a; --hl_type: #5fd0e4; --hl_call: #8fb2ff; --hl_number: #f5b070;
+  --hl_comment: #8593a8; --hl_macro: #b99cff; --hl_constant: #f5b070; }
 :root[data-theme="dark"] {
-  --fallback_background: #121212;
-  --fallback_foreground: #ededed;
-  --fallback_muted: #9a9a9a;
-  --fallback_border: #3a3a3a;
-  --fallback_soft: #1e1e1e;
-  --fallback_module: #8ab4ff;
+  --fallback_background: #0d1320;
+  --fallback_foreground: #e6ebf3;
+  --fallback_muted: #8e99ad;
+  --fallback_border: #26304a;
+  --fallback_soft: #151d2d;
+  --fallback_module: #7ea4ff;
   color-scheme: dark;
 }
 html.own_page { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
@@ -60,7 +91,7 @@ html.own_page body {
   background: var(--cp_background);
   font: 13px/1.45 var(--cp_sans);
   border: 1px solid var(--cp_border);
-  border-radius: var(--cp_radius);
+  border-radius: 0;
   overflow: hidden;
   -webkit-text-size-adjust: 100%;
   text-size-adjust: 100%;
@@ -68,17 +99,29 @@ html.own_page body {
 :where(.capisce) button { font: inherit; color: inherit; background: none; border: 0; padding: 0; cursor: pointer; text-align: left; }
 .capisce [hidden] { display: none; }
 
+/* Buttons speak in the label voice, as on an instrument panel: mono capitals in a hairline box. */
 .bar_button {
-  border: 1px solid var(--cp_border); border-radius: var(--cp_radius);
-  padding: 2px 8px; line-height: 1.5; white-space: nowrap; flex-shrink: 0;
+  display: inline-flex; align-items: center; gap: 7px; height: 26px;
+  border: 1px solid var(--cp_border); border-radius: var(--cp_radius); background: var(--cp_background);
+  padding: 0 9px; white-space: nowrap; flex-shrink: 0;
+  font: var(--cp_label); letter-spacing: var(--cp_label_spacing); text-transform: uppercase; color: var(--cp_foreground);
+  transition: border-color 120ms var(--cp_ease), background-color 120ms var(--cp_ease), color 120ms var(--cp_ease);
 }
 .bar_button:disabled { opacity: 0.35; cursor: default; }
-.bar_button:not(:disabled):hover, .bar_button.on { background: var(--cp_foreground); color: var(--cp_background); }
-.key { color: var(--cp_muted); font: 10.5px var(--cp_mono); margin-left: 4px; }
-.bar_button:hover .key, .bar_button.on .key { color: inherit; }
+.bar_button:not(:disabled):hover { border-color: var(--cp_edge); background: var(--cp_raised); }
+.bar_button.on, .bar_button.on:not(:disabled):hover { border-color: var(--cp_accent_edge); background: var(--cp_accent_wash); color: var(--cp_accent); }
+/* A key cap: the shortcut in its own small box beside the label. */
+.key {
+  min-width: 17px; padding: 0 4px; border: 1px solid var(--cp_border); border-radius: 2px; background: var(--cp_raised);
+  color: var(--cp_muted); font: 500 9.5px/15px var(--cp_mono); letter-spacing: 0; text-align: center; text-transform: none;
+}
+.bar_button.on .key { border-color: var(--cp_accent_edge); background: none; color: inherit; }
 .text_button { font-size: 11.5px; color: var(--cp_muted); text-decoration: underline; text-underline-offset: 2px; }
 .text_button:hover { color: var(--cp_foreground); }
-.panel_label, .group_title { font-size: 10.5px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--cp_muted); }
+.panel_label, .group_title { font: var(--cp_label); letter-spacing: var(--cp_label_spacing); text-transform: uppercase; color: var(--cp_muted); }
+/* The line above a page's name: what kind of page it is, after a small elbow, as a callout leader. */
+.page_kicker { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; font: var(--cp_label); letter-spacing: var(--cp_label_spacing); text-transform: uppercase; color: var(--cp_muted); }
+.page_kicker::before { content: ""; width: 12px; height: 6px; margin-top: 5px; border-left: 1px solid var(--cp_edge); border-top: 1px solid var(--cp_edge); }
 
 .keyword, .comment { color: var(--cp_muted); }
 .comment { font-style: italic; }
@@ -86,13 +129,14 @@ html.own_page body {
 .symbol { cursor: pointer; border-radius: 2px; }
 .symbol:hover { text-decoration: underline; text-underline-offset: 2px; }
 .symbol.model { font-weight: 700; }
-.symbol .module { color: var(--cp_module); }
+.symbol .module { color: var(--cp_accent); }
 .symbol.route { text-decoration: underline; text-underline-offset: 2px; font-style: normal; color: var(--cp_foreground); }
 .own_name { font-weight: 700; }
 
 .added { background: color-mix(in srgb, var(--cp_added) 14%, transparent); }
 .removed { background: color-mix(in srgb, var(--cp_removed) 10%, transparent); color: var(--cp_muted); text-decoration: line-through; }
-.focused { outline: 2px solid var(--cp_foreground); outline-offset: 2px; }
+.focused { outline: 1.5px solid var(--cp_accent); outline-offset: 2px; }
+.capisce :focus-visible { outline: 1.5px solid var(--cp_accent); outline-offset: 2px; }
 
 @media (max-width: 600px) {
   html.own_page body {

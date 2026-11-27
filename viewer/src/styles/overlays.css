@@ -1,19 +1,20 @@
 .tooltip {
   position: absolute; z-index: 7; width: 300px; max-width: calc(100% - 16px);
   background: var(--cp_background); color: var(--cp_foreground);
-  border: 1px solid var(--cp_foreground); border-radius: var(--cp_radius);
-  padding: 10px 12px; box-shadow: 3px 3px 0 var(--cp_border);
+  border: 1px solid var(--cp_edge); border-radius: var(--cp_radius);
+  padding: 10px 12px; box-shadow: var(--cp_lift);
 }
 .tooltip_name { font: 600 12px/1.4 var(--cp_mono); overflow-wrap: anywhere; }
 .tooltip_doc { margin: 6px 0 8px; }
+.tooltip .panel_label { margin-bottom: 2px; }
 .tooltip_path { font: 10.5px var(--cp_mono); color: var(--cp_muted); overflow-wrap: anywhere; }
 .tooltip_actions { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 10px; }
 
-.modal_backdrop { position: absolute; inset: 0; z-index: 8; background: color-mix(in srgb, var(--cp_background) 70%, transparent); display: flex; padding: 28px 20px; }
+.modal_backdrop { position: absolute; inset: 0; z-index: 8; background: color-mix(in srgb, var(--cp_background) 78%, transparent); display: flex; padding: 28px 20px; }
 .modal {
   margin: auto; width: 100%; max-width: 860px; max-height: 100%; display: flex; flex-direction: column;
-  background: var(--cp_background); border: 1px solid var(--cp_foreground); border-radius: var(--cp_radius);
-  box-shadow: 4px 4px 0 var(--cp_border);
+  background: var(--cp_background); border: 1px solid var(--cp_edge);
+  border-radius: var(--cp_radius); box-shadow: var(--cp_lift);
 }
 .modal_header { display: flex; align-items: center; gap: 10px; padding: 8px 12px; border-bottom: 1px solid var(--cp_border); }
 .modal_title { flex: 1; min-width: 0; font: 600 12px var(--cp_mono); overflow-wrap: anywhere; }

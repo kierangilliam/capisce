@@ -41,16 +41,37 @@
   }
 </script>
 
-<svg class="trace" width={drawing.width} height={drawing.height} viewBox="0 0 {drawing.width} {drawing.height}">
+<!-- The module names again, pinned to the top of the panel as it scrolls; the SVG's own heads sit under them. -->
+<div class="trace_heads" style:width="{drawing.width}px" style:height="{drawing.head_height}px" style:margin-bottom="-{drawing.head_height}px" aria-hidden="true">
   {#each drawing.lanes as lane}
+    <div class="trace_heads_cell" style:left="{lane.x - TRACE.lane_gap / 2}px" style:width="{TRACE.lane_gap}px">
+      {#each lane.lines as line}<span>{line}</span>{/each}
+    </div>
+  {/each}
+</div>
+<svg class="trace" width={drawing.width} height={drawing.height} viewBox="0 0 {drawing.width} {drawing.height}">
+  <!-- Swimlanes: a column per module, every other one banded, divided by hairlines. -->
+  {#each drawing.lanes as lane, lane_index}
+    <rect
+      class="lane_band"
+      class:odd={lane_index % 2 === 1}
+      x={lane.x - TRACE.lane_gap / 2}
+      y="0"
+      width={TRACE.lane_gap}
+      height={drawing.height}
+    />
+    <line class="lane_divider" x1={lane.x + TRACE.lane_gap / 2} y1="0" x2={lane.x + TRACE.lane_gap / 2} y2={drawing.height} />
     <line class="lane_line" x1={lane.x} y1={drawing.head_height} x2={lane.x} y2={drawing.height} />
+  {/each}
+  {#each drawing.lanes as lane}
     <g class="lane_head">
-      <rect x={lane.x - TRACE.head_width / 2} y="0.5" width={TRACE.head_width} height={drawing.head_height} rx="4" />
+      <rect x={lane.x - TRACE.lane_gap / 2} y="0" width={TRACE.lane_gap} height={drawing.head_height} />
       {#each lane.lines as line, line_index}
         <text x={lane.x} y={lane.first_line_y + line_index * TRACE.head_line_height}>{line}</text>
       {/each}
     </g>
   {/each}
+  <line class="lane_head_rule" x1="0" y1={drawing.head_height} x2={drawing.width} y2={drawing.head_height} />
   {#each drawing.bars as bar}
     <rect class="trace_bar" x={bar.x} y={bar.y} width={TRACE.bar_width} height={bar.height} />
   {/each}
@@ -77,12 +98,22 @@
       >
         <rect class="trace_hit" x="0" y={drawn.top} width={drawing.width} height={drawn.height} />
         <rect class="trace_mark" x="0" y={drawn.top} width="2" height={drawn.height} />
-        {#if drawn.note !== undefined}
-          <rect class="trace_note" x={drawn.note.x} y={drawn.note.y} width={drawn.note.width} height={drawn.note.height} rx="4" />
-        {/if}
         {#if drawn.arrow_head !== undefined}
           <path class="trace_arrow" d={drawn.arrow_path} />
           <polygon class="trace_head" points={head_points(drawn.arrow_head)} />
+        {/if}
+        {#if drawn.note !== undefined}
+          <rect class="trace_note" x={drawn.note.x} y={drawn.note.y} width={drawn.note.width} height={drawn.note.height} rx="3" />
+        {/if}
+        {#if drawn.label_box !== undefined}
+          <rect
+            class="trace_note trace_call_box"
+            x={drawn.label_box.x}
+            y={drawn.label_box.y}
+            width={drawn.label_box.width}
+            height={drawn.label_box.height}
+            rx="3"
+          />
         {/if}
         {#each drawn.text.lines as line, line_index}
           <text class="trace_label" x={drawn.text.x} y={drawn.text.y + line_index * TRACE.line_height}>{line}</text>
@@ -90,7 +121,7 @@
         {#each drawn.exits as exit}
           <g class="trace_exit">
             <rect x={exit.x} y={exit.y} width={exit.width} height={TRACE.exit_height} rx="3" />
-            <text x={exit.x + 5} y={exit.y + 11}>{exit.text}</text>
+            <text x={exit.x + 5} y={exit.y + 11.5}>{exit.text}</text>
           </g>
         {/each}
       </g>

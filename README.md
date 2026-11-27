@@ -2,6 +2,12 @@
 
 [Capisce](https://capisce.software/) is an open source tool that helps you understand a codebase.
 
+**Quickstart**: paste this into your agent.
+
+```text
+Add github.com/kierangilliam/capisce to my codebase by using the capisce:setup skill. Install the capisce skills to my local skills directory.
+```
+
 As your agents iterate on your codebase, they also write the core business logic in pseudo-code. This pseudo-code helps you see a compressed form of your codebase, removing boilerplate.
 
 ![The sign-in function as Capisce pseudo-code beside its Rust.](docs/images/example.png)

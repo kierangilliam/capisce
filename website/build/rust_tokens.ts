@@ -1,8 +1,8 @@
 // A small pass over Rust, for the site's first code block. It marks what a reader needs to tell apart at a
-// glance (comments, strings, keywords, types, macros, attributes, lifetimes and the name a `fn` defines) and leaves the rest plain.
+// glance (comments, strings, keywords, types, macros, attributes, lifetimes, numbers, calls and the name a `fn` defines) and leaves the rest plain.
 
 export type RustToken = {
-  kind: "text" | "comment" | "string" | "keyword" | "type" | "macro" | "attribute" | "lifetime" | "own_name";
+  kind: "text" | "comment" | "string" | "keyword" | "type" | "macro" | "attribute" | "lifetime" | "own_name" | "number" | "call";
   text: string;
 };
 
@@ -21,6 +21,7 @@ const TOKEN = new RegExp(
     /(#!?\[[^\]\n]*\])/,
     /('[A-Za-z_]\w*)/,
     /([A-Za-z_]\w*!?)/,
+    /(\b\d[\d_]*(?:\.\d[\d_]*)?(?:[eE][+-]?\d+)?(?:[iu](?:8|16|32|64|128|size)|f32|f64)?\b)/,
   ]
     .map((part) => part.source)
     .join("|"),
@@ -28,7 +29,7 @@ const TOKEN = new RegExp(
 );
 const TYPE_NAME = /^[A-Z][A-Za-z0-9]*[a-z][A-Za-z0-9]*$|^[A-Z]$/;
 
-function word_kind(word: string, after_fn: boolean): RustToken["kind"] {
+function word_kind(word: string, after_fn: boolean, called: boolean): RustToken["kind"] {
   if (word.endsWith("!")) {
     return "macro";
   }
@@ -40,6 +41,9 @@ function word_kind(word: string, after_fn: boolean): RustToken["kind"] {
   }
   if (PRIMITIVE_TYPES.has(word) || TYPE_NAME.test(word)) {
     return "type";
+  }
+  if (called) {
+    return "call";
   }
   return "text";
 }
@@ -62,7 +66,7 @@ export function rust_lines(code: string): RustToken[][] {
   for (const match of code.matchAll(TOKEN)) {
     add(code.slice(last, match.index), "text");
     last = match.index + match[0].length;
-    const [, comment, string, attribute, lifetime, word] = match;
+    const [, comment, string, attribute, lifetime, word, number] = match;
     if (comment !== undefined) {
       add(comment, "comment");
     } else if (string !== undefined) {
@@ -72,8 +76,11 @@ export function rust_lines(code: string): RustToken[][] {
     } else if (lifetime !== undefined) {
       add(lifetime, "lifetime");
     } else if (word !== undefined) {
-      add(word, word_kind(word, after_fn));
+      const called = /^\s*(?:::<[^>]*>)?\(/.test(code.slice(last));
+      add(word, word_kind(word, after_fn, called));
       after_fn = word === "fn";
+    } else if (number !== undefined) {
+      add(number, "number");
     }
   }
   add(code.slice(last), "text");

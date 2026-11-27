@@ -13,15 +13,18 @@
       <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27s1.36.09 2 .27c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8Z"/></svg>
     </a>
     <main class="document">
-      <p class="salutation">For the engineers who still want to understand the code,</p>
-
       <p><a id="first_capisce" href="https://github.com/kierangilliam/capisce">Capisce</a> is an open source tool that helps you understand a codebase.</p>
+
+      <div class="quickstart">
+        <span class="quickstart_label">Quickstart</span>
+        <pre class="quickstart_prompt" role="button" tabindex="0" title="Copy to clipboard" aria-label="Copy the quickstart prompt"><code>Add github.com/kierangilliam/capisce to my <span class="quickstart_variable" contenteditable="plaintext-only" spellcheck="false" role="textbox" aria-label="What to add Capisce to" title="Click to change">codebase</span> by using the capisce:setup skill. Install the capisce skills to my local skills directory.</code><span class="quickstart_copy" aria-live="polite">Copy</span></pre>
+      </div>
 
       <p>As your agents iterate on your codebase, they also write the core business logic in pseudo-code. This pseudo-code helps you see a compressed form of your codebase, removing boilerplate.</p>
 
       <!--side-by-side-->
 
-      <p><strong>Zooming in, zooming out</strong></p>
+      <p class="section_heading"><strong>Zooming in, zooming out</strong></p>
 
       <p>Capisce helps you understand a codebase at different levels of resolution.</p>
 
@@ -55,7 +58,7 @@
         <p class="figure_alt">The &lt;/&gt; button in the upper right of the code swaps the pseudo-code of create_instance for its real Rust code, and back.</p>
       </figure>
 
-      <p><strong>Comments</strong></p>
+      <p class="section_heading"><strong>Comments</strong></p>
 
       <p>This surface is interactive. You can leave your agents notes by highlighting…</p>
 
@@ -69,7 +72,7 @@
         <p class="figure_alt">Pressing c turns on comments: a click drops a pin and opens a note, and a drag draws a circle around a step of the trace.</p>
       </figure>
 
-      <p><strong>Diffs</strong></p>
+      <p class="section_heading"><strong>Diffs</strong></p>
 
       <p>Capisce’s pseudo-code is saved alongside your codebase in a <code>.capisce/</code> folder. This allows Capisce to show you a diff of your feature branch against main.</p>
 
@@ -77,7 +80,7 @@
         <p class="figure_alt">The Changes page of a feature branch lists the changed endpoint and function; opening the function shows its added and removed pseudo-code lines and a new step in the trace.</p>
       </figure>
 
-      <p><strong>Glossary</strong></p>
+      <p class="section_heading"><strong>Glossary</strong></p>
 
       <p>You can keep definitions of common domain models in Capisce.</p>
 
@@ -85,7 +88,7 @@
         <p class="figure_alt">Clicking the term store_lock in the pseudo-code shows its definition: the API keeps everything in memory behind one lock.</p>
       </figure>
 
-      <p><strong>Skills</strong></p>
+      <p class="section_heading"><strong>Skills</strong></p>
 
       <p>Capisce includes skills so that your agents will automatically maintain the pseudo-code reflection of your codebase.</p>
 
@@ -97,7 +100,7 @@
         <li><code>/capisce:address-comments</code> An agent will pull your comments and address them, either replying to your comment or making a change to your codebase.</li>
       </ul>
 
-      <p><strong>Examples</strong></p>
+      <p class="section_heading"><strong>Examples</strong></p>
 
       <p><em>Oxide-lite</em>: This is meant to be a replication of Oxide’s Rust control plane interacting with a TypeScript frontend. I say “meant to be” because I gave boot to an agent to transpose Oxide’s codebase into this simplified form, but I will not pretend to be smart enough to claim it’s entirely correct. All that to say, any crimes against Oxide’s good taste or architectural intent were committed by the agent. I maintain plausible deniability. (<a href="https://github.com/kierangilliam/capisce/tree/main/examples/oxide-lite">code</a>) (<a href="/demo/oxide-lite/">demo</a>)</p>
 
